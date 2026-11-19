@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=1">
+<link rel="stylesheet" href="styles.css?v=2">
 </head>
 <body>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -76,21 +76,11 @@
 
   <div class="cols">
     <div class="col">
-      <section class="card o1" id="add-card">
-        <h2>Add hours</h2>
-        <form class="form" id="add-form" novalidate>
-          <div class="field"><label for="a-date">Day</label><input id="a-date" type="date" required></div>
-          <div class="field"><label for="a-hours">Hours worked</label><input id="a-hours" type="text" inputmode="decimal" autocomplete="off" aria-describedby="a-hours-err"><span class="err" id="a-hours-err" hidden></span></div>
-          <div class="field wide"><div class="chips" aria-label="Quick add">
-            <button class="chip" type="button" data-add="15">+15 min</button>
-            <button class="chip" type="button" data-add="30">+30 min</button>
-            <button class="chip" type="button" data-add="60">+1 hour</button>
-            <button class="chip" type="button" data-add="0">Clear</button>
-          </div></div>
-          <div class="field wide"><label for="a-note">Note (optional)</label><input id="a-note" type="text" maxlength="140" autocomplete="off"></div>
-          <div class="field wide" id="a-who-field" hidden><span class="legend" id="a-who-legend">Who is adding this</span><div class="seg" id="a-who" role="radiogroup" aria-labelledby="a-who-legend"></div></div>
-          <div class="field wide"><button class="primary" id="a-save" type="submit">Add hours</button></div>
-        </form>
+      <section class="card o1" id="cal-card" aria-labelledby="h-cal">
+        <div class="cal-head"><h2 id="h-cal">Hours worked</h2><span id="cal-sum"></span></div>
+        <p class="hint cal-hint" id="cal-hint">Tap a day to add or change its shifts.</p>
+        <div class="cal-dow" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+        <div class="cal" id="cal"></div>
       </section>
 
       <section class="o4" aria-labelledby="h-entries">
@@ -131,15 +121,15 @@
   <p class="foot">An estimate from the hours logged, using 2026 to 2027 income tax and National Insurance for England. It is not a payslip and not tax advice.</p>
 </div>
 
-<dialog id="dlg-entry" aria-labelledby="dlg-entry-title">
-  <form class="sheet" id="edit-form" novalidate>
-    <div class="sheet-head"><h2 id="dlg-entry-title">Change hours</h2><button class="ghost" type="button" data-close>Close</button></div>
-    <div class="form">
-      <div class="field"><label for="e-date">Day</label><input id="e-date" type="date" required></div>
-      <div class="field"><label for="e-hours">Hours worked</label><input id="e-hours" type="text" inputmode="decimal" autocomplete="off" aria-describedby="e-hours-err"><span class="err" id="e-hours-err" hidden></span></div>
-      <div class="field wide"><label for="e-note">Note (optional)</label><input id="e-note" type="text" maxlength="140" autocomplete="off"></div>
-    </div>
-    <div class="actions"><button class="danger" type="button" id="e-delete">Delete</button><button class="primary" type="submit" id="e-save">Save</button></div>
+<dialog id="dlg-day" aria-labelledby="dlg-day-title">
+  <form class="sheet" id="day-form" novalidate>
+    <div class="sheet-head"><h2 id="dlg-day-title">Day</h2><button class="ghost" type="button" data-close>Close</button></div>
+    <p class="legacy" id="day-legacy" hidden></p>
+    <div class="shifts" id="shifts"></div>
+    <button class="chip add-shift" type="button" id="add-shift">Add another shift</button>
+    <div class="form"><div class="field wide"><label for="d-note">Note (optional)</label><input id="d-note" type="text" maxlength="140" autocomplete="off"></div></div>
+    <p class="day-total">Total for the day <strong class="num" id="day-total">0m</strong></p>
+    <div class="actions"><button class="danger" type="button" id="d-clear">Clear day</button><button class="primary" type="submit" id="d-save">Save</button></div>
   </form>
 </dialog>
 
@@ -169,7 +159,8 @@
     <div class="form">
       <div class="field"><label for="s-mp-gross">Pension a year, before tax (£)</label><input id="s-mp-gross" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
       <div class="field"><label for="s-mp-code">Pension tax code</label><input id="s-mp-code" type="text" autocapitalize="characters" autocomplete="off"><span class="err" hidden></span></div>
-      <div class="field wide"><label for="s-mp-actual">Amount that arrives each month, once you know it (£)</label><input id="s-mp-actual" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+      <div class="field"><label for="s-mp-day">Paid on day of the month</label><input id="s-mp-day" type="text" inputmode="numeric" autocomplete="off"><span class="err" hidden></span></div>
+      <div class="field"><label for="s-mp-actual">Amount that arrives each month, once you know it (£)</label><input id="s-mp-actual" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
     </div>
 
     <h3>PIP</h3>
@@ -198,7 +189,7 @@
   </form>
 </dialog>
 <script src="config.js?v=1"></script>
-<script src="calc.js?v=1"></script>
-<script type="module" src="app.js?v=1"></script>
+<script src="calc.js?v=2"></script>
+<script type="module" src="app.js?v=2"></script>
 </body>
 </html>

@@ -179,3 +179,36 @@ dialog::backdrop{background:var(--shade)}
 .gate-note{font-size:15px;color:var(--muted)}
 .link{background:none;border:0;padding:0;min-height:44px;color:var(--gold);font-weight:600;text-decoration:underline;text-underline-offset:3px;align-self:center}
 .actions .link{margin:0 auto}
+
+/* 19 November 2026: calendar of the pay cycle and a day's shifts */
+:root{--gold-soft:rgba(216,186,114,.14)}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--gold-soft:rgba(201,167,88,.2)}}
+:root[data-theme="light"]{--gold-soft:rgba(201,167,88,.2)}
+.cal-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.card .cal-head h2{margin:0}
+.cal-head span{font-size:14px;color:var(--muted);font-variant-numeric:tabular-nums}
+.cal-hint{margin:6px 0 14px}
+.cal-dow,.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.cal-dow{font-size:12px;font-weight:600;color:var(--muted);text-align:center;margin-bottom:6px}
+.cal{align-items:start}
+.cal-day,.cal-pad{min-height:64px}
+.cal-day{min-width:0;border:1px solid var(--line);border-radius:12px;background:var(--raised);display:flex;flex-direction:column;align-items:center;gap:1px;padding:5px 1px 6px}
+.cal-day:hover{border-color:var(--hair)}
+.cal-day small{font-size:10px;line-height:12px;height:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--gold)}
+.cd-n{font-size:16px;font-weight:600;line-height:1.2;font-variant-numeric:tabular-nums}
+.cd-h{font-size:12px;line-height:1.3;min-height:1.3em;font-weight:600;color:var(--gold);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cal-day.has{background:var(--gold-soft);border-color:var(--hair)}
+.cal-day.today{box-shadow:inset 0 0 0 2px var(--gold)}
+.cal-day.future .cd-n{color:var(--muted)}
+.shifts{display:flex;flex-direction:column;gap:14px}
+.shift{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 48px;gap:6px 10px;align-items:start}
+.shift-n{grid-column:1/-1;font-size:14px;font-weight:600;color:var(--muted)}
+.shift input[type="time"]{-webkit-appearance:none;appearance:none;text-align:left}
+.shift input[type="time"]::-webkit-date-and-time-value{text-align:left}
+.icon-btn{width:48px;height:48px;margin-top:27px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--fg);display:grid;place-items:center}
+.icon-btn:hover{border-color:var(--bad);color:var(--bad)}
+.add-shift{align-self:flex-start}
+.legacy{font-size:15px;color:var(--muted)}
+.day-total{font-size:17px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-top:1px solid var(--hair);padding-top:14px}
+.day-total strong{font:600 24px/1.1 var(--display);color:var(--gold)}
+@media (max-width:380px){#cal-card{padding:16px 12px}.cal-dow,.cal{gap:3px}}

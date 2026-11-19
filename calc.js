@@ -129,3 +129,7 @@ function parseMoney(str){
   if(!/^\d+(\.\d{1,2})?$/.test(s))return null;
   return Number(s);
 }
+
+/* Shifts: "HH:MM" start and finish on the same day. */
+function timeMins(t){const m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(t||'');return m?Number(m[1])*60+Number(m[2]):null}
+function shiftMins(shifts){return (shifts||[]).reduce((a,s)=>{const x=timeMins(s.start),y=timeMins(s.end);return a+(x!==null&&y!==null&&y>x?y-x:0)},0)}

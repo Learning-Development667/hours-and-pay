@@ -28,14 +28,27 @@ function makeDb(fs){
   const dYear=s=>fmtDate(s,{day:'numeric',month:'short',year:'numeric'});
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function fmtH(mins){const h=Math.floor(mins/60),m=Math.round(mins%60);return h&&m?h+'h '+m+'m':h?h+'h':m+'m'}
-  function fmtHoursBox(mins){return mins?String(Math.round(mins/60*100)/100):''}
+  function fmtCompact(mins){const h=Math.floor(mins/60),m=Math.round(mins%60);return h?h+'h'+(m?pad(m):''):m+'m'}
+  const dFull=s=>fmtDate(s,{weekday:'long',day:'numeric',month:'long'});
+  const monShort=s=>fmtDate(s,{month:'short'});
+  const when=d=>(d<=todayYmd()?'Paid ':'Due ')+dShort(d);
+  /* all hours for each day: shifts, total, notes and the documents that hold them */
+  function dayMap(){
+    const m=new Map();
+    for(const e of S.entries){
+      let d=m.get(e.date); if(!d){d={date:e.date,mins:0,shifts:[],notes:[],ids:[]};m.set(e.date,d)}
+      d.mins+=e.mins; d.ids.push(e.id); if(e.note)d.notes.push(e.note); d.shifts.push(...e.shifts);
+    }
+    for(const d of m.values())d.shifts.sort((x,y)=>timeMins(x.start)-timeMins(y.start));
+    return m;
+  }
+  const shiftText=sh=>sh.map(s=>s.start+' to '+s.end).join(', ');
   function todayYmd(){const d=new Date();return ymd(d.getFullYear(),d.getMonth(),d.getDate())}
 
   const DEFAULTS={salary:0,contractHours:37.5,salaryEstimated:false,target:0,maTaxCode:'1257L',pensionPct:0,
-    ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:0,mpCode:'BR',mpActual:null,pipWeekly:0,pipDay:2,people:[]};
+    ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:0,mpCode:'BR',mpActual:null,pipWeekly:0,pipDay:2,mpDay:22,people:[]};
   const S={entries:[],cfg:Object.assign({},DEFAULTS),hasCfg:false,got:{hours:false,cfg:false},status:'loading',
-    view:null,canWrite:true,db:null,who:'',editing:null,ledger:null};
-  try{S.who=localStorage.getItem('who')||''}catch(e){}
+    view:null,canWrite:true,db:null,day:null,ledger:null};
 
   let toastTimer=null;
   function toast(msg){const t=$('toast');t.textContent=msg;t.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{t.hidden=true},3200)}
@@ -105,11 +118,17 @@ function makeDb(fs){
 
     /* income */
     const pipDayName=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][S.cfg.pipDay==null?2:S.cfg.pipDay];
+    const mpDay=Math.min(28,Math.max(1,Math.round(Number(S.cfg.mpDay))||22)), pipWd=S.cfg.pipDay==null?2:S.cfg.pipDay;
+    let pDate='',pipFirst='',pipLast='';
+    for(let d=cyc.start;d<=cyc.end;d=addDays(d,1)){
+      if(parts(d).d===mpDay&&!pDate)pDate=d;
+      if(weekday(d)===pipWd){if(!pipFirst)pipFirst=d;pipLast=d}
+    }
     $('income').innerHTML=
-      '<div class="row"><span class="rl">MA Group</span><span class="rv num">'+esc(money(cyc.net))+'</span><span class="rs">'+esc(isCur?'Take-home so far, ':'Take-home, ')+esc(fmtH(cyc.mins))+' worked</span></div>'+
-      '<div class="row"><span class="rl">Military pension</span><span class="rv num">'+esc(money(cyc.pension))+'</span><span class="rs">'+esc(cyc.pensionActual?'The monthly amount you entered':'Estimate after tax on code '+String(S.cfg.mpCode||'').toUpperCase())+'</span></div>'+
-      '<div class="row"><span class="rl">PIP</span><span class="rv num">'+esc(money(cyc.pip))+'</span><span class="rs">'+esc(cyc.pipCount+' '+pipDayName+(cyc.pipCount===1?'':'s')+' at '+money(S.cfg.pipWeekly||0))+'</span></div>'+
-      '<div class="row total"><span class="rl">'+esc(isCur?'Total so far':'Total')+'</span><span class="rv num">'+esc(money(cyc.total))+'</span></div>';
+      '<div class="row"><span class="rl">MA Group</span><span class="rv num">'+esc(money(cyc.net))+'</span><span class="rs">'+esc((isCur?'Take-home so far, ':'Take-home, ')+fmtH(cyc.mins)+' worked. '+when(cyc.pay))+'</span></div>'+
+      '<div class="row"><span class="rl">Military pension</span><span class="rv num">'+esc(money(cyc.pension))+'</span><span class="rs">'+esc((pDate?when(pDate)+'. ':'')+(cyc.pensionActual?'The monthly amount you entered':'Estimate after tax on code '+String(S.cfg.mpCode||'').toUpperCase()))+'</span></div>'+
+      '<div class="row"><span class="rl">PIP</span><span class="rv num">'+esc(money(cyc.pip))+'</span><span class="rs">'+esc(cyc.pipCount+' '+pipDayName+(cyc.pipCount===1?'':'s')+' at '+money(S.cfg.pipWeekly||0)+(pipFirst?', '+dShort(pipFirst)+(pipLast!==pipFirst?' to '+dShort(pipLast):''):''))+'</span></div>'+
+      '<div class="row total"><span class="rl">Total this cycle</span><span class="rv num">'+esc(money(cyc.total))+'</span></div>';
 
     /* weeks */
     $('weeks-aim').textContent=target>0?'Aim: '+target+' hours a week':'';
@@ -127,14 +146,26 @@ function makeDb(fs){
         '<div class="bar" role="img" aria-label="'+esc(label+', '+fmtH(w.mins)+(target>0?' of '+target+' hours':''))+'"><i style="width:'+(w.mins/maxM*100).toFixed(2)+'%"></i>'+(target>0?'<b style="left:'+(target*60/maxM*100).toFixed(2)+'%"></b>':'')+'</div></div>';
     }).join('');
 
-    /* entries */
-    const list=S.entries.filter(e=>e.date>=cyc.start&&e.date<=cyc.end);
-    $('entries-sum').textContent=list.length?fmtH(cyc.mins)+' in '+list.length+(list.length===1?' entry':' entries'):'';
-    $('entries').innerHTML=list.length?list.map(e=>{
-      const sub=[e.note,e.by?'Added by '+e.by:''].filter(Boolean).join(' · ');
-      const inner='<span class="rl">'+esc(dLong(e.date))+'</span><span class="rv num">'+esc(fmtH(e.mins))+'</span>'+(sub?'<span class="rs">'+esc(sub)+'</span>':'');
-      return S.canWrite?'<button type="button" class="row" data-edit="'+esc(e.id)+'" aria-label="'+esc('Change '+dLong(e.date)+', '+fmtH(e.mins))+'">'+inner+'</button>':'<div class="row">'+inner+'</div>';
-    }).join(''):'<p class="empty">'+(ready?(isCur?'No hours logged in this cycle yet. Add today’s hours'+(S.canWrite?' above.':'.'):'No hours were logged in this cycle.'):'Loading.')+'</p>';
+    /* calendar and days */
+    const dm=dayMap();
+    let cal='';
+    for(let i=(weekday(cyc.start)+6)%7;i>0;i--)cal+='<span class="cal-pad" aria-hidden="true"></span>';
+    for(let d=cyc.start;d<=cyc.end;d=addDays(d,1)){
+      const x=dm.get(d), mins=x?x.mins:0, p=parts(d), mon=d===cyc.start||p.d===1;
+      const cls='cal-day'+(mins?' has':'')+(d===today?' today':'')+(d>today?' future':'');
+      const label=dFull(d)+(d===today?', today':'')+(mins?', '+fmtH(mins)+' worked':', no hours');
+      cal+='<button type="button" class="'+cls+'" data-day="'+d+'" aria-label="'+esc(label)+'"><small>'+(mon?esc(monShort(d)):'')+'</small><span class="cd-n">'+p.d+'</span><span class="cd-h">'+(mins?esc(fmtCompact(mins)):'')+'</span></button>';
+    }
+    $('cal').innerHTML=cal;
+    $('cal-sum').textContent=fmtH(cyc.mins)+(isCur?' so far':'');
+    $('cal-hint').hidden=!S.canWrite;
+    const days=[...dm.values()].filter(x=>x.date>=cyc.start&&x.date<=cyc.end).sort((x,y)=>x.date<y.date?1:-1);
+    $('entries-sum').textContent=days.length?fmtH(cyc.mins)+' over '+days.length+(days.length===1?' day':' days'):'';
+    $('entries').innerHTML=days.length?days.map(x=>{
+      const sub=[x.shifts.length?shiftText(x.shifts):'',...x.notes].filter(Boolean).join('. ');
+      const inner='<span class="rl">'+esc(dLong(x.date))+'</span><span class="rv num">'+esc(fmtH(x.mins))+'</span>'+(sub?'<span class="rs">'+esc(sub)+'</span>':'');
+      return S.canWrite?'<button type="button" class="row" data-day="'+x.date+'" aria-label="'+esc('Change '+dFull(x.date)+', '+fmtH(x.mins))+'">'+inner+'</button>':'<div class="row">'+inner+'</div>';
+    }).join(''):'<p class="empty">'+(ready?(isCur?'No hours logged in this cycle yet.'+(S.canWrite?' Tap a day on the calendar to add them.':''):'No hours were logged in this cycle.'):'Loading.')+'</p>';
 
     /* running totals */
     const sum=rows=>rows.reduce((a,r)=>({mins:a.mins+r.mins,gross:a.gross+r.gross,net:a.net+r.net,total:a.total+r.total}),{mins:0,gross:0,net:0,total:0});
@@ -147,12 +178,6 @@ function makeDb(fs){
       '<tr><td><button type="button" data-view="'+c.start+'">'+esc(dShort(c.start)+' to '+dShort(c.end))+'</button></td><td class="num">'+esc(fmtH(c.mins))+'</td><td class="num">'+esc(money(c.net))+'</td><td class="num">'+esc(money(c.total))+'</td></tr>').join('');
     $('hist-foot').innerHTML='<tr><td>All cycles</td><td class="num">'+esc(fmtH(all.mins))+'</td><td class="num">'+esc(money(all.net))+'</td><td class="num">'+esc(money(all.total))+'</td></tr>';
 
-    /* who and write controls */
-    $('add-card').hidden=!S.canWrite||S.status==='nodb';
-    const people=Array.isArray(S.cfg.people)?S.cfg.people.filter(p=>typeof p==='string'&&p):[];
-    $('a-who-field').hidden=people.length<2;
-    if(people.length&&people.indexOf(S.who)<0)S.who=people[0];
-    $('a-who').innerHTML=people.map(p=>'<button type="button" role="radio" aria-checked="'+(p===S.who)+'" data-who="'+esc(p)+'">'+esc(p)+'</button>').join('');
   }
 
   /* ---------- actions ---------- */
@@ -162,64 +187,83 @@ function makeDb(fs){
     else if(e&&e.code==='resource-exhausted')toast('The ledger is busy. Try again in a minute.');
     else toast('That did not save. Try again.');
   }
-  function readEntry(prefix){
-    const d=$(prefix+'-date'),h=$(prefix+'-hours'); let ok=true;
-    if(!isYmd(d.value)){ok=false;d.focus()}
-    const mins=parseHours(h.value);
-    if(mins===null){markBad(h,h.value.trim()?'Check this: use hours such as 2.5 or 2:30':'Missing information');if(ok)h.focus();ok=false}
-    return ok?{date:d.value,mins:mins,note:$(prefix+'-note').value.trim().slice(0,140)}:null;
-  }
-  $('add-form').addEventListener('submit',async ev=>{
-    ev.preventDefault();
-    const v=readEntry('a'); if(!v||!S.db)return;
-    const btn=$('a-save'); btn.disabled=true;
-    try{
-      await S.db.collection('hours').add({date:v.date,mins:v.mins,note:v.note,by:S.who||'',at:Date.now()});
-      $('a-hours').value='';$('a-note').value='';
-      S.view=cycleOf(v.date).start; render();
-      toast('Added '+fmtH(v.mins)+' for '+dLong(v.date));
-    }catch(e){writeFailed(e)}
-    btn.disabled=false;
-  });
   document.addEventListener('click',ev=>{
     const t=ev.target.closest('button'); if(!t)return;
-    if(t.dataset.add!==undefined){
-      const box=$('a-hours'), add=Number(t.dataset.add), curM=parseHours(box.value)||0;
-      box.value=add?fmtHoursBox(Math.min(1440,curM+add)):''; clearBad(box);
-    }else if(t.dataset.who!==undefined){
-      S.who=t.dataset.who; try{localStorage.setItem('who',S.who)}catch(e){} render();
-    }else if(t.dataset.view){S.view=t.dataset.view;render();window.scrollTo({top:0,behavior:'smooth'})}
-    else if(t.dataset.edit){openEdit(t.dataset.edit)}
+    if(t.dataset.view){S.view=t.dataset.view;render();window.scrollTo({top:0,behavior:'smooth'})}
+    else if(t.dataset.day){openDay(t.dataset.day)}
+    else if(t.dataset.removeShift!==undefined){const rows=readRows();rows.splice(Number(t.dataset.removeShift),1);drawShifts(rows);const f=document.querySelector('#shifts [data-k="start"]');if(f)f.focus()}
     else if(t.dataset.openSettings!==undefined){openSettings()}
     else if(t.dataset.close!==undefined){t.closest('dialog').close()}
   });
   $('btn-prev').addEventListener('click',()=>{const L=S.ledger,i=L.cycles.findIndex(c=>c.start===S.view);if(i>0){S.view=L.cycles[i-1].start;render()}});
   $('btn-next').addEventListener('click',()=>{const L=S.ledger,i=L.cycles.findIndex(c=>c.start===S.view);if(i<L.cycles.length-1){S.view=L.cycles[i+1].start;render()}});
 
-  function openEdit(id){
-    const e=S.entries.find(x=>x.id===id); if(!e)return;
-    S.editing=e;
-    $('e-date').value=e.date;$('e-hours').value=fmtHoursBox(e.mins);$('e-note').value=e.note||'';
-    clearBad($('e-hours'));
-    const del=$('e-delete');del.textContent='Delete';del.dataset.armed='';
-    $('dlg-entry').showModal();
+  /* ---------- a day's shifts ---------- */
+  const X_ICON='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  function readRows(){return [...document.querySelectorAll('#shifts .shift')].map(r=>({start:r.querySelector('[data-k="start"]').value,end:r.querySelector('[data-k="end"]').value}))}
+  function drawShifts(rows){
+    $('shifts').innerHTML=rows.map((r,i)=>'<div class="shift"><p class="shift-n">Shift '+(i+1)+'</p>'+
+      '<div class="field"><label for="sh'+i+'s">Start</label><input id="sh'+i+'s" data-k="start" type="time" value="'+esc(r.start)+'"><span class="err" hidden></span></div>'+
+      '<div class="field"><label for="sh'+i+'e">Finish</label><input id="sh'+i+'e" data-k="end" type="time" value="'+esc(r.end)+'"><span class="err" hidden></span></div>'+
+      (rows.length>1?'<button class="icon-btn" type="button" data-remove-shift="'+i+'" aria-label="Remove shift '+(i+1)+'">'+X_ICON+'</button>':'<span></span>')+'</div>').join('');
+    $('add-shift').hidden=rows.length>=6;
+    showDayTotal();
   }
-  $('edit-form').addEventListener('submit',async ev=>{
-    ev.preventDefault();
-    const v=readEntry('e'), e=S.editing; if(!v||!e||!S.db)return;
-    const btn=$('e-save'); btn.disabled=true;
+  function showDayTotal(){$('day-total').textContent=fmtH(shiftMins(readRows()))}
+  $('shifts').addEventListener('input',showDayTotal);
+  $('shifts').addEventListener('change',showDayTotal);
+  $('add-shift').addEventListener('click',()=>{
+    const rows=readRows(); rows.push({start:'',end:''}); drawShifts(rows);
+    const all=document.querySelectorAll('#shifts [data-k="start"]'); all[all.length-1].focus();
+  });
+  function openDay(date){
+    if(!S.db||!isYmd(date))return;
+    if(!S.canWrite){toast('This sign-in is not allowed to change the ledger.');return}
+    const x=dayMap().get(date);
+    S.day={date:date,ids:x?x.ids:[]};
+    $('dlg-day-title').textContent=dFull(date);
+    const untimed=x&&!x.shifts.length;
+    $('day-legacy').textContent=untimed?'This day has '+fmtH(x.mins)+' logged without times. Saving shifts replaces it.':'';
+    $('day-legacy').hidden=!untimed;
+    $('d-note').value=x?x.notes.join('. ').slice(0,140):'';
+    drawShifts(x&&x.shifts.length?x.shifts.map(s=>({start:s.start,end:s.end})):[{start:'',end:''}]);
+    const clr=$('d-clear'); clr.hidden=!x; clr.textContent='Clear day'; clr.dataset.armed='';
+    $('dlg-day').showModal();
+  }
+  $('day-form').addEventListener('submit',async ev=>{
+    ev.preventDefault(); const day=S.day; if(!day||!S.db)return;
+    const rowsEl=[...document.querySelectorAll('#shifts .shift')]; let firstBad=null; const good=[];
+    const bad=(el,msg)=>{markBad(el,msg);if(!firstBad)firstBad=el};
+    rowsEl.forEach(r=>{
+      const si=r.querySelector('[data-k="start"]'), ei=r.querySelector('[data-k="end"]');
+      clearBad(si);clearBad(ei);
+      if(!si.value&&!ei.value)return;
+      const s=timeMins(si.value), e=timeMins(ei.value);
+      if(s===null)bad(si,'Missing information');
+      if(e===null)bad(ei,'Missing information');
+      else if(s!==null&&e<=s)bad(ei,'Check this: finish after the start');
+      if(s!==null&&e!==null&&e>s)good.push({start:si.value,end:ei.value,s:s,e:e,el:si});
+    });
+    good.sort((x,y)=>x.s-y.s);
+    for(let i=1;i<good.length;i++)if(good[i].s<good[i-1].e)bad(good[i].el,'Check this: overlaps another shift');
+    if(!firstBad&&!good.length){const f=rowsEl[0].querySelector('[data-k="start"]');bad(f,'Missing information');}
+    if(firstBad){firstBad.focus();return}
+    const shifts=good.map(g=>({start:g.start,end:g.end})), mins=shiftMins(shifts), note=$('d-note').value.trim().slice(0,140);
+    const btn=$('d-save'); btn.disabled=true;
     try{
-      await S.db.collection('hours').doc(e.id).set({date:v.date,mins:v.mins,note:v.note,by:e.by||'',at:e.at||Date.now(),changed:Date.now()});
-      $('dlg-entry').close(); toast('Saved');
-    }catch(err){writeFailed(err)}
+      await S.db.collection('hours').doc(day.date).set({date:day.date,mins:mins,shifts:shifts,note:note,at:Date.now()});
+      for(const id of day.ids)if(id!==day.date)await S.db.collection('hours').doc(id).delete();
+      $('dlg-day').close(); S.view=cycleOf(day.date).start; render();
+      toast('Saved '+fmtH(mins)+' for '+dLong(day.date));
+    }catch(e){writeFailed(e)}
     btn.disabled=false;
   });
-  $('e-delete').addEventListener('click',async()=>{
-    const del=$('e-delete'), e=S.editing; if(!e||!S.db)return;
-    if(!del.dataset.armed){del.dataset.armed='1';del.textContent='Tap again to delete';return}
-    del.disabled=true;
-    try{await S.db.collection('hours').doc(e.id).delete();$('dlg-entry').close();toast('Deleted')}catch(err){writeFailed(err)}
-    del.disabled=false;
+  $('d-clear').addEventListener('click',async()=>{
+    const clr=$('d-clear'), day=S.day; if(!day||!S.db)return;
+    if(!clr.dataset.armed){clr.dataset.armed='1';clr.textContent='Tap again to clear';return}
+    clr.disabled=true;
+    try{for(const id of day.ids)await S.db.collection('hours').doc(id).delete();$('dlg-day').close();toast('Cleared '+dLong(day.date))}catch(e){writeFailed(e)}
+    clr.disabled=false;
   });
 
   /* ---------- settings ---------- */
@@ -241,6 +285,7 @@ function makeDb(fs){
     $('s-ytd-tax').value=c.ytdTax==null?'':numBox(c.ytdTax);
     $('s-mp-gross').value=c.mpGross?numBox(c.mpGross):'';
     $('s-mp-code').value=c.mpCode||'';
+    $('s-mp-day').value=String(c.mpDay==null?22:c.mpDay);
     $('s-mp-actual').value=c.mpActual?numBox(c.mpActual):'';
     $('s-pip').value=c.pipWeekly?numBox(c.pipWeekly):'';
     $('s-pip-day').value=String(c.pipDay==null?2:c.pipDay);
@@ -271,6 +316,8 @@ function makeDb(fs){
     }
     next.ytdDate=some?yd:''; next.ytdTaxable=some?yp:null; next.ytdTax=some?yt:null;
     next.mpGross=need('s-mp-gross',10000000); next.mpCode=codeOf('s-mp-code');
+    const mdEl=$('s-mp-day'), md=Number(mdEl.value.trim());
+    if(!/^\d{1,2}$/.test(mdEl.value.trim())||md<1||md>28)bad(mdEl,mdEl.value.trim()?'Check this: a day from 1 to 28':'Missing information'); else next.mpDay=md;
     const act=opt('s-mp-actual'); next.mpActual=act===undefined?null:act;
     next.pipWeekly=need('s-pip',100000); next.pipDay=Number($('s-pip-day').value);
     if(firstBad){firstBad.focus();return}
@@ -285,7 +332,8 @@ function makeDb(fs){
     if(!d||!isYmd(d.date))return null;
     const mins=Math.round(Number(d.mins));
     if(!(mins>0)||mins>1440)return null;
-    return {id:id,date:d.date,mins:mins,note:typeof d.note==='string'?d.note.slice(0,140):'',by:typeof d.by==='string'?d.by.slice(0,40):'',at:Number(d.at)||0};
+    const shifts=Array.isArray(d.shifts)?d.shifts.filter(s=>s&&timeMins(s.start)!==null&&timeMins(s.end)!==null&&timeMins(s.end)>timeMins(s.start)).slice(0,10).map(s=>({start:s.start,end:s.end})):[];
+    return {id:id,date:d.date,mins:mins,shifts:shifts,note:typeof d.note==='string'?d.note.slice(0,140):'',at:Number(d.at)||0};
   }
   /* ---------- sign-in and live data ---------- */
   let auth=null, store=null, unsubs=[], slow=null;
@@ -356,14 +404,13 @@ function makeDb(fs){
       Object.keys(DEFAULTS).forEach(k=>{if(pack.config[k]!==undefined)cfg[k]=pack.config[k]});
       await S.db.doc('config/main').set(cfg);
       const rows=Array.isArray(pack.hours)?pack.hours.map((h,i)=>cleanEntry('x'+i,h)).filter(Boolean).slice(0,200):[];
-      for(const r of rows)await S.db.collection('hours').add({date:r.date,mins:r.mins,note:r.note,by:r.by,at:r.at||Date.now()});
+      for(const r of rows)await S.db.collection('hours').add({date:r.date,mins:r.mins,shifts:r.shifts,note:r.note,at:r.at||Date.now()});
       box.value=''; $('dlg-setup').close(); toast('Your details are loaded');
     }catch(e){writeFailed(e)}
     btn.disabled=false;
   });
 
   function start(){
-    $('a-date').value=todayYmd();
     render();
     const conf=window.FIREBASE_CONFIG;
     if(!conf||!conf.apiKey){
