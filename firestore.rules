@@ -1,0 +1,14 @@
+rules_version = '2';
+// Only the two named sign-ins can read or change anything.
+// Replace the two addresses below with the real ones when pasting into the Firebase console.
+// Keep the real addresses out of this file: the repository is public.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function allowed() {
+      return request.auth != null
+        && request.auth.token.email in ['first.person@example.com', 'second.person@example.com'];
+    }
+    match /config/{docId} { allow read, write: if allowed(); }
+    match /hours/{docId} { allow read, write: if allowed(); }
+  }
+}

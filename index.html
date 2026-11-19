@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://www.gstatic.com; img-src 'self' data:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="theme-color" content="#0A1420">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hours and Pay">
+<title>Hours and Pay</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<main class="gate" id="view-wait"><div class="brand"><small>Private ledger</small>Hours and Pay</div></main>
+
+<main class="gate" id="view-signin" hidden>
+  <div class="gate-card">
+    <div class="brand"><small>Private ledger</small>Hours and Pay</div>
+    <p class="gate-note" id="gate-note" hidden></p>
+    <form class="form" id="signin-form" novalidate>
+      <div class="field wide"><label for="si-email">Email</label><input id="si-email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false"><span class="err" hidden></span></div>
+      <div class="field wide"><label for="si-pass">Password</label><input id="si-pass" type="password" autocomplete="current-password"><span class="err" hidden></span></div>
+      <div class="field wide"><button class="primary" type="submit" id="si-go">Sign in</button></div>
+      <div class="field wide"><button class="link" type="button" id="si-reset">Forgotten your password?</button></div>
+    </form>
+  </div>
+</main>
+
+<div class="wrap" id="view-app" hidden>
+  <header class="top">
+    <div class="brand"><small>Private ledger</small>Hours and Pay</div>
+    <button class="ghost" id="btn-settings" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></svg>
+      Settings
+    </button>
+  </header>
+
+  <nav class="cycle" aria-label="Pay cycle">
+    <button class="ghost" id="btn-prev" type="button" aria-label="Earlier pay cycle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <div class="cycle-label"><strong id="cycle-name">Pay cycle</strong><span id="cycle-note">&nbsp;</span></div>
+    <button class="ghost" id="btn-next" type="button" aria-label="Later pay cycle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+  </nav>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <section class="hero" aria-labelledby="hero-eyebrow">
+    <div class="hero-main">
+      <div class="hero-fig">
+        <p class="eyebrow" id="hero-eyebrow">Take-home so far this cycle</p>
+        <p class="amount" id="hero-amount">£0.00</p>
+        <p class="hero-sub" id="hero-sub">Loading your hours.</p>
+      </div>
+      <div class="ring" id="ring" hidden>
+        <svg viewBox="0 0 104 104" role="img" id="ring-svg" aria-label="Hours this week">
+          <circle class="ring-track" cx="52" cy="52" r="44" fill="none" stroke-width="8"/>
+          <circle class="ring-fill" id="ring-fill" cx="52" cy="52" r="44" fill="none" stroke-width="8" stroke-linecap="round" transform="rotate(-90 52 52)" stroke-dasharray="276.46" stroke-dashoffset="276.46"/>
+        </svg>
+        <div class="ring-text"><strong id="ring-value">0h</strong><span id="ring-label">this week</span><div class="met" id="ring-met" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Weekly aim met</div></div>
+      </div>
+    </div>
+    <dl class="split" id="split"></dl>
+    <p class="course" id="course" hidden></p>
+    <p class="basis" id="basis"></p>
+  </section>
+
+  <div class="cols">
+    <div class="col">
+      <section class="card o1" id="add-card">
+        <h2>Add hours</h2>
+        <form class="form" id="add-form" novalidate>
+          <div class="field"><label for="a-date">Day</label><input id="a-date" type="date" required></div>
+          <div class="field"><label for="a-hours">Hours worked</label><input id="a-hours" type="text" inputmode="decimal" autocomplete="off" aria-describedby="a-hours-err"><span class="err" id="a-hours-err" hidden></span></div>
+          <div class="field wide"><div class="chips" aria-label="Quick add">
+            <button class="chip" type="button" data-add="15">+15 min</button>
+            <button class="chip" type="button" data-add="30">+30 min</button>
+            <button class="chip" type="button" data-add="60">+1 hour</button>
+            <button class="chip" type="button" data-add="0">Clear</button>
+          </div></div>
+          <div class="field wide"><label for="a-note">Note (optional)</label><input id="a-note" type="text" maxlength="140" autocomplete="off"></div>
+          <div class="field wide" id="a-who-field" hidden><span class="legend" id="a-who-legend">Who is adding this</span><div class="seg" id="a-who" role="radiogroup" aria-labelledby="a-who-legend"></div></div>
+          <div class="field wide"><button class="primary" id="a-save" type="submit">Add hours</button></div>
+        </form>
+      </section>
+
+      <section class="o4" aria-labelledby="h-entries">
+        <div class="sec-head"><h2 id="h-entries">Hours logged</h2><span id="entries-sum"></span></div>
+        <div class="rows" id="entries"></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="o2" aria-labelledby="h-income">
+        <div class="sec-head"><h2 id="h-income">All income this cycle</h2><span>after tax</span></div>
+        <div class="rows" id="income"></div>
+        <p class="hint">PIP is not taxed. These are estimates: the payslip is the final word.</p>
+      </section>
+
+      <section class="o3" aria-labelledby="h-weeks">
+        <div class="sec-head"><h2 id="h-weeks">Week by week</h2><span id="weeks-aim"></span></div>
+        <div class="weeks" id="weeks"></div>
+        <p class="key" id="weeks-key"><b></b><span>Weekly aim. Weeks run Monday to Sunday and count in full.</span></p>
+      </section>
+
+      <section class="o5" aria-labelledby="h-totals">
+        <div class="sec-head"><h2 id="h-totals">Running totals</h2><span id="totals-note"></span></div>
+        <p class="sub" id="ty-label">This tax year</p>
+        <dl class="stats" id="ty-stats"></dl>
+        <p class="sub">Since tracking began</p>
+        <dl class="stats" id="all-stats"></dl>
+        <p class="sub">Cycle by cycle</p>
+        <div class="scroll"><table>
+          <thead><tr><th scope="col">Cycle</th><th scope="col">Hours</th><th scope="col">Take-home</th><th scope="col">All income</th></tr></thead>
+          <tbody id="hist"></tbody>
+          <tfoot id="hist-foot"></tfoot>
+        </table></div>
+      </section>
+    </div>
+  </div>
+
+  <p class="foot">An estimate from the hours logged, using 2026 to 2027 income tax and National Insurance for England. It is not a payslip and not tax advice.</p>
+</div>
+
+<dialog id="dlg-entry" aria-labelledby="dlg-entry-title">
+  <form class="sheet" id="edit-form" novalidate>
+    <div class="sheet-head"><h2 id="dlg-entry-title">Change hours</h2><button class="ghost" type="button" data-close>Close</button></div>
+    <div class="form">
+      <div class="field"><label for="e-date">Day</label><input id="e-date" type="date" required></div>
+      <div class="field"><label for="e-hours">Hours worked</label><input id="e-hours" type="text" inputmode="decimal" autocomplete="off" aria-describedby="e-hours-err"><span class="err" id="e-hours-err" hidden></span></div>
+      <div class="field wide"><label for="e-note">Note (optional)</label><input id="e-note" type="text" maxlength="140" autocomplete="off"></div>
+    </div>
+    <div class="actions"><button class="danger" type="button" id="e-delete">Delete</button><button class="primary" type="submit" id="e-save">Save</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlg-settings" aria-labelledby="dlg-settings-title">
+  <form class="sheet" id="set-form" novalidate>
+    <div class="sheet-head"><h2 id="dlg-settings-title">Settings</h2><button class="ghost" type="button" data-close>Close</button></div>
+
+    <h3>MA Group pay</h3>
+    <div class="form">
+      <div class="field"><label for="s-salary">Full-time salary a year, before tax (£)</label><input id="s-salary" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+      <div class="field"><label for="s-contract">Contracted hours a week</label><input id="s-contract" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+      <div class="field wide"><p>Hourly rate: <span class="rate-out" id="s-rate">not set</span> (salary, divided by 52 weeks, divided by contracted hours)</p></div>
+      <div class="field"><label for="s-target">Weekly aim (hours)</label><input id="s-target" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+      <div class="field"><label for="s-code">Tax code on your payslip</label><input id="s-code" type="text" autocapitalize="characters" autocomplete="off"><span class="err" hidden></span></div>
+      <div class="field wide"><label for="s-pens">Workplace pension taken from pay (% of pay, 0 if none)</label><input id="s-pens" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+    </div>
+
+    <h3>From your newest payslip (optional)</h3>
+    <p>With these three figures the tax is worked out the way payroll does it, on the year so far. Leave all three empty to work it out month by month.</p>
+    <div class="form">
+      <div class="field wide"><label for="s-ytd-date">Payslip pay date</label><input id="s-ytd-date" type="date"><span class="err" hidden></span></div>
+      <div class="field"><label for="s-ytd-pay">Taxable pay to date (£)</label><input id="s-ytd-pay" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+      <div class="field"><label for="s-ytd-tax">Tax paid to date (£)</label><input id="s-ytd-tax" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+    </div>
+
+    <h3>Military pension</h3>
+    <div class="form">
+      <div class="field"><label for="s-mp-gross">Pension a year, before tax (£)</label><input id="s-mp-gross" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+      <div class="field"><label for="s-mp-code">Pension tax code</label><input id="s-mp-code" type="text" autocapitalize="characters" autocomplete="off"><span class="err" hidden></span></div>
+      <div class="field wide"><label for="s-mp-actual">Amount that arrives each month, once you know it (£)</label><input id="s-mp-actual" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+    </div>
+
+    <h3>PIP</h3>
+    <div class="form">
+      <div class="field"><label for="s-pip">Amount each week (£)</label><input id="s-pip" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+      <div class="field"><label for="s-pip-day">Paid on</label><select id="s-pip-day"><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option></select></div>
+    </div>
+
+    <div class="actions"><button class="primary" type="submit" id="s-save">Save settings</button></div>
+
+    <h3>This sign-in</h3>
+    <p id="s-user"></p>
+    <div class="actions"><button class="ghost" type="button" id="btn-signout">Sign out</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlg-setup" aria-labelledby="dlg-setup-title">
+  <form class="sheet" id="setup-form" novalidate>
+    <div class="sheet-head"><h2 id="dlg-setup-title">Set up the ledger</h2><button class="ghost" type="button" data-close>Close</button></div>
+    <p>The ledger is empty. Paste the set-up code you were given to load your pay details in one go.</p>
+    <div class="form">
+      <div class="field wide"><label for="su-code">Set-up code</label><input id="su-code" type="text" autocomplete="off" autocapitalize="none" spellcheck="false"><span class="err" hidden></span></div>
+    </div>
+    <div class="actions"><button class="primary" type="submit" id="su-go">Load my details</button></div>
+    <div class="actions"><button class="link" type="button" id="su-manual">Fill in Settings by hand</button></div>
+  </form>
+</dialog>
+<script src="config.js?v=1"></script>
+<script src="calc.js?v=1"></script>
+<script type="module" src="app.js?v=1"></script>
+</body>
+</html>
