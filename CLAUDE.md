@@ -21,11 +21,11 @@ A private ledger for Mark and Shelley: hours Mark works at MA Group, with live e
 ## Shape
 - Plain HTML, CSS and JS, no build step. Firebase JS SDK v10 modular from gstatic (Auth email and password, Firestore). Fonts from Google Fonts. The Content Security Policy is in `index.html`.
 - `index.html` (sign-in, the ledger, the Change hours, Settings and Set up sheets), `styles.css` (tokens at the top), `calc.js` (dates, pay cycles, tax and NI, the ledger; pure functions), `app.js` (sign-in, rendering, saving), `config.js`, `manifest.json` and the icons.
+- **Hosting:** GitHub Pages from `main`, root, at https://learning-development667.github.io/hours-and-pay/ (the repository is public, so nothing personal goes in it).
 - **Firebase project:** Wage Tracker (`wage-tracker-69401`), Spark plan, Firestore in europe-west2 (London). Sign-up is switched off; the two users were added by hand.
 - **Data:** `config/main` (salary, contracted hours, weekly aim, tax codes, payslip year-to-date figures, pension, PIP, the two names) and `hours/{id}` (`date` YYYY-MM-DD, `mins`, `note`, `by`, `at`).
 - **Tax:** 2026 to 2027 rates for England. Codes ending Week1/Month1, W1/M1 or X are worked month by month; other codes use the year so far when the payslip's year-to-date figures are filled in, otherwise month by month. BR, D0, D1, NT, 0T and K codes are read.
 - **First sign-in:** an empty database opens the Set up sheet, which takes a set-up code (base64 JSON of the settings and any hours) given to Mark privately, or Settings can be filled in by hand.
 
 ## Open
-- Hosting: the repository is private, so GitHub Pages needs a paid plan. Decide the host (see the session of 19 November 2026).
 - Nothing has been tried on an iPhone yet.
