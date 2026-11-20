@@ -232,3 +232,8 @@ dialog::backdrop{background:var(--shade)}
 /* 21 November 2026: the calendar comes first; beside the pay card on wide screens */
 .lead{display:flex;flex-direction:column;gap:24px}
 @media (min-width:940px){.lead{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:24px;align-items:start}}
+
+/* 21 November 2026: update banner */
+.update{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid var(--hair);border-radius:14px;padding:10px 12px 10px 16px;background:var(--surface);font-size:16px;font-weight:500}
+.update .primary{width:auto;min-height:44px;padding:0 18px;font-size:16px}
+.thresh{font-size:14px}

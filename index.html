@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=7">
+<link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -45,6 +45,8 @@
       Settings
     </button>
   </header>
+
+  <div class="update" id="update" role="status" hidden><span id="update-text">A new version is live.</span><button class="primary" type="button" id="update-go">Update now</button></div>
 
   <nav class="cycle" aria-label="Pay cycle">
     <button class="ghost" id="btn-prev" type="button" aria-label="Earlier pay cycle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
@@ -78,6 +80,7 @@
         </div>
       </div>
       <dl class="split" id="split"></dl>
+      <p class="basis thresh" id="thresh" hidden></p>
       <p class="course" id="course" hidden></p>
       <p class="basis" id="basis"></p>
     </section>
@@ -130,7 +133,7 @@
     </div>
   </div>
 
-  <p class="foot">An estimate from the hours logged, using 2026 to 2027 income tax and National Insurance for England. It is not a payslip and not tax advice.</p>
+  <p class="foot">An estimate from the hours logged, using 2026 to 2027 income tax and National Insurance for England. It is not a payslip and not tax advice. <span id="app-version"></span></p>
 </div>
 
 <dialog id="dlg-day" aria-labelledby="dlg-day-title">
@@ -194,6 +197,7 @@
 
     <h3>This sign-in</h3>
     <p id="s-user"></p>
+    <p id="s-version"></p>
     <div class="actions"><button class="ghost" type="button" id="btn-signout">Sign out</button></div>
   </form>
 </dialog>
@@ -211,6 +215,6 @@
 </dialog>
 <script src="config.js?v=1"></script>
 <script src="calc.js?v=6"></script>
-<script type="module" src="app.js?v=8"></script>
+<script type="module" src="app.js?v=9"></script>
 </body>
 </html>

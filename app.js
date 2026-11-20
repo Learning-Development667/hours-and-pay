@@ -18,6 +18,9 @@ function makeDb(fs){
   };
 }
 
+/* Bump APP_VERSION and version.json together on every change to the app. */
+const APP_VERSION=11, APP_DATE='21 November 2026';
+
 (function(){
   const $=id=>document.getElementById(id);
   const GBP=new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP'});
@@ -94,6 +97,11 @@ function makeDb(fs){
       stat('National Insurance',money(cyc.ni));
     if(cyc.pens>0)split+=stat('Workplace pension',money(cyc.pens));
     $('split').innerHTML=split;
+    const mc=parseCode(S.cfg.maTaxCode), taxFree=mc&&mc.kind==='allow'?Math.max(0,mc.allowance/12):0, th=[];
+    if(isCur&&L.rate>0&&cyc.gross<TAX.niLower)th.push('National Insurance starts once this cycle\u2019s pay passes '+money(TAX.niLower)+' ('+money(TAX.niLower-cyc.gross)+' to go)');
+    if(isCur&&L.rate>0&&mc&&mc.kind==='allow'&&cyc.gross<taxFree)th.push('income tax once it passes '+money(taxFree));
+    $('thresh').textContent=th.length?'Nothing is taken yet: '+th.join(', and ')+'.':'';
+    $('thresh').hidden=!th.length;
     const course=$('course'), target=S.cfg.target||0;
     if(isCur&&cyc.projected&&cyc.daysLeft>0&&L.rate>0){
       const pr=cyc.projected;
@@ -317,6 +325,7 @@ function makeDb(fs){
     $('s-pip-day').value=String(c.pipDay==null?2:c.pipDay);
     $('set-form').querySelectorAll('.field input').forEach(clearBad);
     $('s-save').hidden=!S.canWrite;
+    $('s-version').textContent='Version '+APP_VERSION+', '+APP_DATE+'.';
     $('s-user').textContent=S.user&&S.user.email?'Signed in as '+S.user.email:'';
     showRate();
     $('dlg-settings').showModal();
@@ -441,7 +450,22 @@ function makeDb(fs){
     btn.disabled=false;
   });
 
+  /* ---------- version: show it, and offer the newer one once it is live ---------- */
+  let liveVersion=0;
+  async function checkVersion(){
+    try{
+      const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok)return;
+      const j=await r.json(), v=Number(j.version)||0;
+      if(v>APP_VERSION){liveVersion=v;$('update-text').textContent='Version '+v+' is live. You are on version '+APP_VERSION+'.';$('update').hidden=false}
+    }catch(e){}
+  }
+  $('update-go').addEventListener('click',()=>{location.replace(location.pathname+'?v='+(liveVersion||Date.now()))});
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')checkVersion()});
+  setInterval(checkVersion,10*60*1000);
+
   function start(){
+    $('app-version').textContent='Version '+APP_VERSION+'.';
+    checkVersion();
     render();
     const conf=window.FIREBASE_CONFIG;
     if(!conf||!conf.apiKey){
