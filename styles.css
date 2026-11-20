@@ -212,3 +212,4 @@ dialog::backdrop{background:var(--shade)}
 .day-total{font-size:17px;display:flex;justify-content:space-between;align-items:baseline;gap:12px;border-top:1px solid var(--hair);padding-top:14px}
 .day-total strong{font:600 24px/1.1 var(--display);color:var(--gold)}
 @media (max-width:380px){#cal-card{padding:16px 12px}.cal-dow,.cal{gap:3px}}
+.cd-h.sick{color:var(--muted);font-size:11px;letter-spacing:.04em}

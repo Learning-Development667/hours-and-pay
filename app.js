@@ -46,7 +46,7 @@ function makeDb(fs){
   function todayYmd(){const d=new Date();return ymd(d.getFullYear(),d.getMonth(),d.getDate())}
 
   const DEFAULTS={salary:0,contractHours:37.5,salaryEstimated:false,target:0,maTaxCode:'1257L',pensionPct:0,
-    ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:0,mpCode:'BR',mpActual:null,pipWeekly:0,pipDay:2,mpDay:22,people:[]};
+    ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:0,mpCode:'BR',mpActual:null,pipWeekly:0,pipDay:2,mpDay:22,sspDaily:0,sspFrom:'',people:[]};
   const S={entries:[],cfg:Object.assign({},DEFAULTS),hasCfg:false,got:{hours:false,cfg:false},status:'loading',
     view:null,canWrite:true,db:null,day:null,ledger:null};
 
@@ -88,8 +88,8 @@ function makeDb(fs){
     $('hero-eyebrow').textContent=isCur?'Take-home so far this cycle':'Take-home for this cycle';
     $('hero-amount').textContent=money(cyc.net);
     $('hero-sub').textContent=!ready?'Loading your hours.':
-      (cyc.mins?fmtH(cyc.mins)+' at '+money(L.rate)+' an hour. ':'No hours logged yet. ')+'Paid around '+dLong(workingDayOnOrBefore(cyc.pay))+'.';
-    let split=stat('Before tax',money(cyc.gross))+
+      (cyc.mins?fmtH(cyc.mins)+' at '+money(L.rate)+' an hour. ':'No hours logged yet. ')+(cyc.sspDays?'Sick pay for '+cyc.sspDays+(cyc.sspDays===1?' day. ':' days. '):'')+'Paid around '+dLong(workingDayOnOrBefore(cyc.pay))+'.';
+    let split=(cyc.ssp>0?stat('Hours',money(cyc.hoursPay))+stat('Sick pay',money(cyc.ssp)):'')+stat('Before tax',money(cyc.gross))+
       (cyc.tax<0?stat('Tax refund',money(-cyc.tax)):stat('Income tax',money(cyc.tax)))+
       stat('National Insurance',money(cyc.ni));
     if(cyc.pens>0)split+=stat('Workplace pension',money(cyc.pens));
@@ -125,7 +125,7 @@ function makeDb(fs){
       if(weekday(d)===pipWd){if(!pipFirst)pipFirst=d;pipLast=d}
     }
     $('income').innerHTML=
-      '<div class="row"><span class="rl">MA Group</span><span class="rv num">'+esc(money(cyc.net))+'</span><span class="rs">'+esc((isCur?'Take-home so far, ':'Take-home, ')+fmtH(cyc.mins)+' worked. '+when(cyc.pay))+'</span></div>'+
+      '<div class="row"><span class="rl">MA Group</span><span class="rv num">'+esc(money(cyc.net))+'</span><span class="rs">'+esc((isCur?'Take-home so far, ':'Take-home, ')+fmtH(cyc.mins)+' worked'+(cyc.sspDays?' and '+cyc.sspDays+(cyc.sspDays===1?' day':' days')+' of sick pay':'')+'. '+when(cyc.pay))+'</span></div>'+
       '<div class="row"><span class="rl">Military pension</span><span class="rv num">'+esc(money(cyc.pension))+'</span><span class="rs">'+esc((pDate?when(pDate)+'. ':'')+(cyc.pensionActual?'The monthly amount you entered':'Estimate after tax on code '+String(S.cfg.mpCode||'').toUpperCase()))+'</span></div>'+
       '<div class="row"><span class="rl">PIP</span><span class="rv num">'+esc(money(cyc.pip))+'</span><span class="rs">'+esc(cyc.pipCount+' '+pipDayName+(cyc.pipCount===1?'':'s')+' at '+money(S.cfg.pipWeekly||0)+(pipFirst?', '+dShort(pipFirst)+(pipLast!==pipFirst?' to '+dShort(pipLast):''):''))+'</span></div>'+
       '<div class="row total"><span class="rl">Total this cycle</span><span class="rv num">'+esc(money(cyc.total))+'</span></div>';
@@ -151,10 +151,10 @@ function makeDb(fs){
     let cal='';
     for(let i=(weekday(cyc.start)+6)%7;i>0;i--)cal+='<span class="cal-pad" aria-hidden="true"></span>';
     for(let d=cyc.start;d<=cyc.end;d=addDays(d,1)){
-      const x=dm.get(d), mins=x?x.mins:0, p=parts(d), mon=d===cyc.start||p.d===1;
+      const x=dm.get(d), mins=x?x.mins:0, p=parts(d), mon=d===cyc.start||p.d===1, sick=!mins&&isSspDay(d,S.cfg,today,L.worked);
       const cls='cal-day'+(mins?' has':'')+(d===today?' today':'')+(d>today?' future':'');
-      const label=dFull(d)+(d===today?', today':'')+(mins?', '+fmtH(mins)+' worked':', no hours');
-      cal+='<button type="button" class="'+cls+'" data-day="'+d+'" aria-label="'+esc(label)+'"><small>'+(mon?esc(monShort(d)):'')+'</small><span class="cd-n">'+p.d+'</span><span class="cd-h">'+(mins?esc(fmtCompact(mins)):'')+'</span></button>';
+      const label=dFull(d)+(d===today?', today':'')+(mins?', '+fmtH(mins)+' worked':sick?', sick pay':', no hours');
+      cal+='<button type="button" class="'+cls+'" data-day="'+d+'" aria-label="'+esc(label)+'"><small>'+(mon?esc(monShort(d)):'')+'</small><span class="cd-n">'+p.d+'</span><span class="cd-h'+(sick?' sick':'')+'">'+(mins?esc(fmtCompact(mins)):sick?'SSP':'')+'</span></button>';
     }
     $('cal').innerHTML=cal;
     $('cal-sum').textContent=fmtH(cyc.mins)+(isCur?' so far':'');
@@ -272,6 +272,8 @@ function makeDb(fs){
     const s=parseMoney($('s-salary').value), h=parseMoney($('s-contract').value);
     $('s-rate').textContent=s>0&&h>0?money(s/52/h)+' an hour':'not set';
   }
+  function showSspEnd(){const f=$('s-ssp-from').value;$('s-ssp-end').textContent=isYmd(f)?'28 weeks from this date ends on '+dYear(addDays(f,SSP_WEEKS*7-1))+'.':''}
+  $('s-ssp-from').addEventListener('input',showSspEnd);$('s-ssp-from').addEventListener('change',showSspEnd);
   $('s-salary').addEventListener('input',showRate); $('s-contract').addEventListener('input',showRate);
   function openSettings(){
     const c=S.cfg;
@@ -285,6 +287,9 @@ function makeDb(fs){
     $('s-ytd-tax').value=c.ytdTax==null?'':numBox(c.ytdTax);
     $('s-mp-gross').value=c.mpGross?numBox(c.mpGross):'';
     $('s-mp-code').value=c.mpCode||'';
+    $('s-ssp-day').value=c.sspDaily?numBox(c.sspDaily):'';
+    $('s-ssp-from').value=isYmd(c.sspFrom)?c.sspFrom:'';
+    showSspEnd();
     $('s-mp-day').value=String(c.mpDay==null?22:c.mpDay);
     $('s-mp-actual').value=c.mpActual?numBox(c.mpActual):'';
     $('s-pip').value=c.pipWeekly?numBox(c.pipWeekly):'';
@@ -316,6 +321,10 @@ function makeDb(fs){
     }
     next.ytdDate=some?yd:''; next.ytdTaxable=some?yp:null; next.ytdTax=some?yt:null;
     next.mpGross=need('s-mp-gross',10000000); next.mpCode=codeOf('s-mp-code');
+    const sdEl=$('s-ssp-day'), sd=opt('s-ssp-day'), sfEl=$('s-ssp-from');
+    if(sd!==undefined){next.sspDaily=sd||0;
+      if(next.sspDaily>0&&!isYmd(sfEl.value))bad(sfEl,'Missing information'); else next.sspFrom=next.sspDaily>0?sfEl.value:'';
+      if(next.sspDaily>200)bad(sdEl,'Check this: the amount for one day');}
     const mdEl=$('s-mp-day'), md=Number(mdEl.value.trim());
     if(!/^\d{1,2}$/.test(mdEl.value.trim())||md<1||md>28)bad(mdEl,mdEl.value.trim()?'Check this: a day from 1 to 28':'Missing information'); else next.mpDay=md;
     const act=opt('s-mp-actual'); next.mpActual=act===undefined?null:act;

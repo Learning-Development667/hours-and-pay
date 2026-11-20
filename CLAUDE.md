@@ -5,7 +5,7 @@ A private ledger for Mark and Shelley: hours Mark works at MA Group, with live e
 ## Brief (agreed 19 November 2026)
 - **Who:** Mark and Shelley. Both can add, change and delete hours, and change settings. Nobody else can sign in.
 - **What it does:** log hours by day; work out the hourly rate from the salary and contracted hours; estimate income tax and National Insurance; show a running total for the current pay cycle, the tax year and since tracking began; show the weekly aim against hours worked.
-- **Pay cycle:** the 14th to the 13th, paid on the 25th of the month the cycle ends in (hours from 14 Nov to 13 Dec are paid on 25 Dec). The military pension is paid on the 22nd; PIP every Tuesday. A pay date on a weekend or an England bank holiday is shown on the working day before (`workingDayOnOrBefore`, `BANK_HOLIDAYS` in `calc.js`, which needs the next year's dates adding each autumn).
+- **Pay cycle:** the 15th to the 14th, paid on the 25th of the month the cycle ends in (hours from 15 Nov to 14 Dec are paid on 25 Dec; MA Group's October 2026 payroll paid hours up to 14 October in October). The military pension is paid on the 22nd; PIP every Tuesday. A pay date on a weekend or an England bank holiday is shown on the working day before (`workingDayOnOrBefore`, `BANK_HOLIDAYS` in `calc.js`, which needs the next year's dates adding each autumn).
 - **Look:** premium. Deep navy, gold hairlines, Fraunces for figures and headings, Inter for text. Light and dark.
 - **Not:** an App Store app, a payslip, or tax advice. It says so on the page.
 
@@ -25,6 +25,7 @@ A private ledger for Mark and Shelley: hours Mark works at MA Group, with live e
 - **Firebase project:** Wage Tracker (`wage-tracker-69401`), Spark plan, Firestore in europe-west2 (London). Sign-up is switched off; the two users were added by hand.
 - **Data:** `config/main` (salary, contracted hours, weekly aim, tax codes, payslip year-to-date figures, pension and the day of the month it is paid (`mpDay`), PIP and its weekday) and `hours/{YYYY-MM-DD}` (one document per day: `date`, `mins`, `shifts` [{`start`,`end`} as HH:MM], `note`, `at`). Older documents with random ids and no shifts are still read and are replaced when that day is saved.
 - **Entering hours:** a calendar of the pay cycle; tap a day to add up to six shifts (start and finish, same day, no overlaps). Who entered the hours is not recorded.
+- **Pay:** hours at the hourly rate (salary / 52 / contracted hours, rounded to the penny as payroll does) plus Statutory Sick Pay: a day's rate for each weekday with no hours, from the SSP start date for up to 28 weeks, counted only for days already passed (`isSspDay`). The workplace pension is taken after tax (relief at source). Checked against the October 2026 payroll preview: same hours pay, tax and NI.
 - **Tax:** 2026 to 2027 rates for England. Codes ending Week1/Month1, W1/M1 or X are worked month by month; other codes use the year so far when the payslip's year-to-date figures are filled in, otherwise month by month. BR, D0, D1, NT, 0T and K codes are read.
 - **First sign-in:** an empty database opens the Set up sheet, which takes a set-up code (base64 JSON of the settings and any hours) given to Mark privately, or Settings can be filled in by hand.
 

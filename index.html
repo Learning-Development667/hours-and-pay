@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=2">
+<link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -144,7 +144,15 @@
       <div class="field wide"><p>Hourly rate: <span class="rate-out" id="s-rate">not set</span> (salary, divided by 52 weeks, divided by contracted hours)</p></div>
       <div class="field"><label for="s-target">Weekly aim (hours)</label><input id="s-target" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
       <div class="field"><label for="s-code">Tax code on your payslip</label><input id="s-code" type="text" autocapitalize="characters" autocomplete="off"><span class="err" hidden></span></div>
-      <div class="field wide"><label for="s-pens">Workplace pension taken from pay (% of pay, 0 if none)</label><input id="s-pens" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+      <div class="field wide"><label for="s-pens">Workplace pension taken from pay after tax (% of pay, 0 if none)</label><input id="s-pens" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+    </div>
+
+    <h3>Statutory Sick Pay</h3>
+    <p>Paid for each weekday you do no hours, for up to 28 weeks. Leave the amount empty if you are not getting it.</p>
+    <div class="form">
+      <div class="field"><label for="s-ssp-day">Amount a day (£)</label><input id="s-ssp-day" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+      <div class="field"><label for="s-ssp-from">Sick pay started on</label><input id="s-ssp-from" type="date"><span class="err" hidden></span></div>
+      <div class="field wide"><p id="s-ssp-end"></p></div>
     </div>
 
     <h3>From your newest payslip (optional)</h3>
@@ -189,7 +197,7 @@
   </form>
 </dialog>
 <script src="config.js?v=1"></script>
-<script src="calc.js?v=3"></script>
-<script type="module" src="app.js?v=3"></script>
+<script src="calc.js?v=4"></script>
+<script type="module" src="app.js?v=4"></script>
 </body>
 </html>

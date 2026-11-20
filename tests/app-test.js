@@ -22,7 +22,7 @@ export async function setDoc(r,d){for(const k in d)if(d[k]===undefined)throw new
 export async function addDoc(c,d){data.set(c.path+'/id'+(n++),JSON.parse(JSON.stringify(d)));emit()}
 export async function deleteDoc(r){data.delete(r.path);emit()}
 window.__data=data;`};
-const pack={config:{salary:48750,contractHours:37.5,salaryEstimated:true,target:15,maTaxCode:'1257L',pensionPct:0,ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:10000,mpCode:'BR',mpActual:null,pipWeekly:100,pipDay:2,people:['Alex','Sam']},hours:[{date:'2026-11-16',mins:180,note:'',by:'Alex',at:1},{date:'2026-11-17',mins:150,note:'Module review',by:'Sam',at:2}]};
+const pack={config:{salary:48750,contractHours:37.5,salaryEstimated:true,target:15,maTaxCode:'1257L',pensionPct:0,ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:10000,mpCode:'BR',mpActual:null,pipWeekly:100,pipDay:2,sspDaily:24.65,sspFrom:'2026-10-01',people:['Alex','Sam']},hours:[{date:'2026-11-16',mins:180,note:'',by:'Alex',at:1},{date:'2026-11-17',mins:150,note:'Module review',by:'Sam',at:2}]};
 const code=Buffer.from(JSON.stringify(pack)).toString('base64');
 (async()=>{
   await new Promise(r=>srv.listen(8765,r));
@@ -56,6 +56,8 @@ const code=Buffer.from(JSON.stringify(pack)).toString('base64');
     await step('clear day',async()=>{await p.click('.cal-day[data-day="2026-11-16"]');await p.click('#d-clear');await p.click('#d-clear');await p.clock.runFor(300);const has=await p.evaluate(()=>window.__data.has('hours/2026-11-16'));if(has)throw new Error('still there')});
     await step('no who picker',async()=>{if(await p.locator('#a-who').count())throw new Error('present')});
     await step('pension moves off a Sunday 22nd',async()=>{const t=await p.textContent('#income');if(!/Due Fri 20 Nov/.test(t))throw new Error(t)});
+    await step('sick pay on weekdays with no hours',async()=>{const t=(await p.innerText('#split')).replace(/\s+/g,' ');if(!/Sick pay £49\.30/.test(t))throw new Error(t);const c=await p.textContent('.cal-day[data-day="2026-11-18"] .cd-h');if(c!=='SSP')throw new Error('cell '+c);const w=await p.textContent('.cal-day[data-day="2026-11-21"] .cd-h');if(w!=='')throw new Error('weekend '+w)});
+    await step('cycle runs 15th to 14th',async()=>{const t=await p.textContent('#cycle-name');if(!/15 Nov to 14 Dec 2026/.test(t))throw new Error(t)});
     await step('settings save keeps values',async()=>{await p.click('#btn-settings');await p.waitForSelector('#dlg-settings[open]');const c=await p.inputValue('#s-code');if(c!=='1257L')throw new Error('code '+c);await p.fill('#s-code','1100L Week1/Month1');await p.click('#s-save');await p.clock.runFor(300);await p.waitForSelector('#dlg-settings:not([open])',{timeout:2000,state:'attached'});const c2=await p.evaluate(()=>window.__data.get('config/main').maTaxCode);if(c2!=='1100L WEEK1/MONTH1')throw new Error('saved '+c2)});
     const hero=await p.evaluate(()=>({amount:document.getElementById('hero-amount').textContent,split:document.getElementById('split').innerText.replace(/\n/g,' '),total:document.querySelector('.row.total .rv').textContent}));
     console.log(name,JSON.stringify(hero));

@@ -10,7 +10,8 @@ function mondayOf(s){return addDays(s,-((weekday(s)+6)%7))}
 function isYmd(s){return typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&!isNaN(toDate(s))}
 
 /* Pay cycle: the 14th to the 13th, paid around the 25th of the month it ends in. */
-var CYCLE_START=14, PAY_DAY=25;
+/* Hours from the 15th to the 14th are paid on the 25th of the month the cycle ends in (MA Group payroll, October 2026). */
+var CYCLE_START=15, PAY_DAY=25;
 function cycleOf(s){
   const p=parts(s), sm=p.d>=CYCLE_START?p.m:p.m-1;
   const start=ymd(p.y,sm,CYCLE_START), sp=parts(start);
@@ -52,16 +53,27 @@ function taxDue(pay,months,code){
 function niDue(gross){
   return round2(.08*Math.max(0,Math.min(gross,TAX.niUpper)-TAX.niLower)+.02*Math.max(0,gross-TAX.niUpper));
 }
-function hourlyRate(cfg){return cfg.salary>0&&cfg.contractHours>0?cfg.salary/52/cfg.contractHours:0}
+/* Payroll rounds the hourly rate to the penny. */
+function hourlyRate(cfg){return cfg.salary>0&&cfg.contractHours>0?round2(cfg.salary/52/cfg.contractHours):0}
 
 /* One cycle's pay. `base` is the year so far before this pay day, when it is known. */
-function payFor(mins,rate,cfg,code,base,month){
-  const gross=round2(mins/60*rate), pens=round2(gross*(cfg.pensionPct||0)/100), taxable=gross-pens;
+/* Statutory Sick Pay: a day's rate for each weekday with no hours, from the start date, for up to 28 weeks. */
+var SSP_WEEKS=28;
+function sspEnd(cfg){return isYmd(cfg.sspFrom)?addDays(cfg.sspFrom,SSP_WEEKS*7-1):''}
+function isSspDay(d,cfg,today,worked){
+  if(!(cfg.sspDaily>0)||!isYmd(cfg.sspFrom))return false;
+  const wd=weekday(d);
+  return wd>=1&&wd<=5&&d>=cfg.sspFrom&&d<=sspEnd(cfg)&&d<=today&&!worked.has(d);
+}
+/* The workplace pension is taken after tax (relief at source), so it does not lower taxable pay. */
+function payFor(mins,rate,cfg,code,base,month,ssp){
+  ssp=ssp||0;
+  const hoursPay=round2(mins/60*rate), gross=round2(hoursPay+ssp), pens=round2(gross*(cfg.pensionPct||0)/100), taxable=gross;
   let tax,basis,cumAfter=0,paidAfter=0;
   if(base){cumAfter=base.cum+taxable;paidAfter=taxDue(cumAfter,month,code);tax=round2(paidAfter-base.paid);basis='year'}
   else{tax=taxDue(taxable,1,code);basis=code&&code.kind==='flat'?'flat':'month'}
   const ni=niDue(gross);
-  return {mins:mins,gross:gross,pens:pens,tax:tax,ni:ni,net:round2(gross-pens-tax-ni),basis:basis,cumAfter:cumAfter,paidAfter:paidAfter};
+  return {mins:mins,hoursPay:hoursPay,ssp:ssp,gross:gross,pens:pens,tax:tax,ni:ni,net:round2(gross-pens-tax-ni),basis:basis,cumAfter:cumAfter,paidAfter:paidAfter};
 }
 function pensionNet(cfg){
   if(cfg.mpActual>0)return {net:round2(cfg.mpActual),actual:true};
@@ -72,8 +84,10 @@ function countWeekday(start,end,wd){let n=0;for(let d=start;d<=end;d=addDays(d,1
 
 function buildLedger(entries,cfg,today){
   const rate=hourlyRate(cfg), code=parseCode(cfg.maTaxCode), cur=cycleOf(today);
-  const byCycle=new Map(); let first=cur.start,last=cur.start;
+  const byCycle=new Map(), worked=new Set(); let first=cur.start,last=cur.start;
+  if(cfg.sspDaily>0&&isYmd(cfg.sspFrom)&&cfg.sspFrom<=today){const k=cycleOf(cfg.sspFrom).start;if(k<first)first=k}
   for(const e of entries){
+    if(e.mins>0)worked.add(e.date);
     const k=cycleOf(e.date).start;
     byCycle.set(k,(byCycle.get(k)||0)+e.mins);
     if(k<first)first=k; if(k>last)last=k;
@@ -95,12 +109,15 @@ function buildLedger(entries,cfg,today){
       }
       if(!chain.broken)base={cum:chain.cum,paid:chain.paid};
     }
-    const pay=payFor(mins,rate,cfg,code,base,m);
-    const row=Object.assign({start:c.start,end:c.end,pay:c.pay,ty:ty},pay);
+    let sspDays=0;
+    for(let d=c.start;d<=c.end;d=addDays(d,1))if(isSspDay(d,cfg,today,worked))sspDays++;
+    const ssp=round2(sspDays*(cfg.sspDaily||0));
+    const pay=payFor(mins,rate,cfg,code,base,m,ssp);
+    const row=Object.assign({start:c.start,end:c.end,pay:c.pay,ty:ty,sspDays:sspDays},pay);
     if(c.start===cur.start&&target>0){
       const left=Math.max(0,daysBetween(today,c.end));
       row.daysLeft=left;
-      row.projected=payFor(Math.round(mins+target*60/7*left),rate,cfg,code,base,m);
+      row.projected=payFor(Math.round(mins+target*60/7*left),rate,cfg,code,base,m,ssp);
     }
     if(base){chain.cum=pay.cumAfter;chain.paid=pay.paidAfter}
     row.pension=pn.net; row.pensionActual=pn.actual;
@@ -109,7 +126,7 @@ function buildLedger(entries,cfg,today){
     row.total=round2(row.net+row.pension+row.pip);
     cycles.push(row);
   }
-  return {cycles:cycles,current:cur,rate:rate,codeOk:!!code,stale:stale};
+  return {cycles:cycles,current:cur,rate:rate,codeOk:!!code,stale:stale,worked:worked};
 }
 function parseHours(str){
   const s=String(str||'').trim().toLowerCase().replace(',','.');
