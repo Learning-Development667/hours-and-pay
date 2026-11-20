@@ -1,0 +1,58 @@
+{
+  "stamp": "2026-11-21a",
+  "note": "October payroll, HMRC records and your outgoings",
+  "settings": {
+    "salary": 60400,
+    "contractHours": 37.5,
+    "target": 15,
+    "maTaxCode": "344L M1",
+    "pensionPct": 2,
+    "ytdDate": "2026-10-23",
+    "ytdTaxable": 31132.87,
+    "ytdTax": 6303.84,
+    "mpGross": 16500.48,
+    "mpCode": "BR",
+    "mpActual": 1100.04,
+    "mpDay": 22,
+    "mpTaxYtd": 3173.2,
+    "pipWeekly": 194.6,
+    "pipDay": 2,
+    "sspDaily": 24.65,
+    "sspFrom": "2026-10-01",
+    "salaryEstimated": false
+  },
+  "outgoings": [
+    {
+      "name": "House account",
+      "amount": 2000
+    },
+    {
+      "name": "Scottish Friendly",
+      "amount": 100.63
+    },
+    {
+      "name": "Claude",
+      "amount": 90
+    },
+    {
+      "name": "Christmas account",
+      "amount": 50
+    },
+    {
+      "name": "Lottery account",
+      "amount": 24
+    },
+    {
+      "name": "Adobe Firefly Pro Plus",
+      "amount": 23.96
+    },
+    {
+      "name": "Adobe Premiere",
+      "amount": 21.98
+    },
+    {
+      "name": "AppleCare One",
+      "amount": 16.99
+    }
+  ]
+}

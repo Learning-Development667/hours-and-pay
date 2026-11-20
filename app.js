@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=16, APP_DATE='21 November 2026';
+const APP_VERSION=17, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -411,6 +411,26 @@ const APP_VERSION=16, APP_DATE='21 November 2026';
   });
   window.addEventListener('hashchange',readUpdateLink);
 
+  /* figures.json: Mark's figures kept in the repository at his request. When its stamp is new, merge it into config/main once. */
+  let figuresAt=0;
+  async function applyFigures(){
+    if(!S.db||!S.got.cfg||!S.canWrite||Date.now()-figuresAt<60000)return; figuresAt=Date.now();
+    try{
+      const r=await fetch('figures.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok)return;
+      const f=await r.json(); if(!f||typeof f.stamp!=='string'||!f.stamp||f.stamp===S.cfg.figuresStamp)return;
+      const changes={figuresStamp:f.stamp}, set=f.settings&&typeof f.settings==='object'?f.settings:{};
+      Object.keys(UPD).forEach(k=>{if(k in set){const v=cleanUpd(k,set[k]);if(v!==undefined)changes[k]=v}});
+      if(Array.isArray(f.outgoings)){
+        const merged=(Array.isArray(S.cfg.outgoings)?S.cfg.outgoings:[]).map(x=>({name:x.name,amount:Number(x.amount)}));
+        f.outgoings.filter(o=>o&&typeof o.name==='string'&&Number(o.amount)>0).slice(0,30).forEach(o=>{const n={name:o.name.slice(0,40),amount:Number(o.amount)};const i=merged.findIndex(x=>x.name.trim().toLowerCase()===n.name.trim().toLowerCase());if(i>=0)merged[i]=n;else merged.push(n)});
+        changes.outgoings=merged;
+      }
+      await S.db.doc('config/main').set(Object.assign({},S.cfg,changes));
+      toast('Figures updated'+(typeof f.note==='string'&&f.note?': '+f.note.slice(0,80):''));
+    }catch(e){}
+  }
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')applyFigures()});
+
   $('out-edit').addEventListener('click',()=>{
     const o=(Array.isArray(S.cfg.outgoings)?S.cfg.outgoings:[]).map(x=>({name:x.name||'',amount:x.amount!=null?String(x.amount):''}));
     drawOuts(o.length?o:[{name:'',amount:''}]); $('dlg-out').showModal();
@@ -530,7 +550,7 @@ const APP_VERSION=16, APP_DATE='21 November 2026';
     unsubs.push(db.doc('config/main').onSnapshot(snap=>{
       if(snap.exists){S.cfg=Object.assign({},DEFAULTS,snap.data());S.hasCfg=true}
       if(!snap.metadata.fromCache||snap.exists)S.got.cfg=true;
-      if(snap.exists)setTimeout(()=>{applyOutLink();applyUpdateLink()},0);
+      if(snap.exists)setTimeout(()=>{applyOutLink();applyUpdateLink();applyFigures()},0);
       if(!snap.exists&&!snap.metadata.fromCache&&!S.setupShown){S.setupShown=true;const d=$('dlg-setup');if(!d.open)d.showModal()}
       settle();
     },fail));

@@ -11,7 +11,7 @@ A private ledger for Mark and Shelley: hours Mark works at MA Group, with live e
 
 ## Working rules
 - UK English. No em dashes anywhere a person reads.
-- **No personal figures in this repository**: no salary, tax codes, pension, PIP amounts, hours, email addresses or names beyond "Mark" and "Shelley" in this file. They live in the database behind the sign-in. Tests use made-up figures.
+- **Mark's figures may go in `figures.json` only** (Mark, 21 November 2026: "I am happy to take the risk"; the repository and site are public). It holds just what the sums need: pay, tax codes, year-to-date figures, pension, PIP, sick pay and outgoings. **Never** his National Insurance number, address, date of birth, email addresses, bank details or anything medical, and no hours. Nothing personal anywhere else in the repository; tests use made-up figures. To change his figures, edit `figures.json` and give it a new `stamp` (and a short `note`): the app merges it into `config/main` once, the next time either of them opens it, and shows "Figures updated". Outgoings merge by name, so ones they add in the app are kept.
 - `config.js` holds only the public Firebase web settings. The database rules in the Firebase console hold the two real email addresses; `firestore.rules` here is the template with placeholders.
 - **Version number:** bump `APP_VERSION` (and `APP_DATE`) in `app.js` and `version` in `version.json` together on every commit that changes the app. The footer and Settings show the version; when `version.json` on the site is newer than the open copy, a banner offers "Update now" (checked on opening, on returning to the app, and every 10 minutes).
 - Run `node --check` on every JS file before committing. Bump the `?v=` on `styles.css`, `calc.js`, `app.js` and `config.js` in `index.html` when they change.
@@ -22,7 +22,7 @@ A private ledger for Mark and Shelley: hours Mark works at MA Group, with live e
 ## Shape
 - Plain HTML, CSS and JS, no build step. Firebase JS SDK v10 modular from gstatic (Auth email and password, Firestore). Fonts from Google Fonts. The Content Security Policy is in `index.html`.
 - `index.html` (sign-in, the ledger, the Change hours, Settings and Set up sheets), `styles.css` (tokens at the top), `calc.js` (dates, pay cycles, tax and NI, the ledger; pure functions), `app.js` (sign-in, rendering, saving), `config.js`, `manifest.json` and the icons.
-- **Hosting:** GitHub Pages from `main`, root, at https://learning-development667.github.io/hours-and-pay/ (the repository is public, so nothing personal goes in it).
+- **Hosting:** GitHub Pages from `main`, root, at https://learning-development667.github.io/hours-and-pay/ (the repository is public; see the figures rule above).
 - **Firebase project:** Wage Tracker (`wage-tracker-69401`), Spark plan, Firestore in europe-west2 (London). Sign-up is switched off; the two users were added by hand.
 - **Data:** `config/main` (salary, contracted hours, weekly aim, tax codes, monthly outgoings, payslip year-to-date figures, pension and the day of the month it is paid (`mpDay`), PIP and its weekday) and `hours/{YYYY-MM-DD}` (one document per day: `date`, `mins`, `shifts` [{`start`,`end`} as HH:MM], `note`, `at`). Older documents with random ids and no shifts are still read and are replaced when that day is saved.
 - **Entering hours:** a calendar of the pay cycle, first on the page (beside the pay card on wide screens); tap a day to add up to six shifts (start and finish, same day, no overlaps). Who entered the hours is not recorded.
