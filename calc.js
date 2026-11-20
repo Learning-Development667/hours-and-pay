@@ -133,3 +133,7 @@ function parseMoney(str){
 /* Shifts: "HH:MM" start and finish on the same day. */
 function timeMins(t){const m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(t||'');return m?Number(m[1])*60+Number(m[2]):null}
 function shiftMins(shifts){return (shifts||[]).reduce((a,s)=>{const x=timeMins(s.start),y=timeMins(s.end);return a+(x!==null&&y!==null&&y>x?y-x:0)},0)}
+
+/* A pay date that lands on a weekend or an England bank holiday is paid on the working day before. */
+var BANK_HOLIDAYS=['2026-12-25','2026-12-28','2027-01-01','2027-03-26','2027-03-29','2027-05-03','2027-05-31','2027-08-30','2027-12-27','2027-12-28'];
+function workingDayOnOrBefore(s){let d=s;while(weekday(d)===0||weekday(d)===6||BANK_HOLIDAYS.indexOf(d)>=0)d=addDays(d,-1);return d}

@@ -31,7 +31,7 @@ function makeDb(fs){
   function fmtCompact(mins){const h=Math.floor(mins/60),m=Math.round(mins%60);return h?h+'h'+(m?pad(m):''):m+'m'}
   const dFull=s=>fmtDate(s,{weekday:'long',day:'numeric',month:'long'});
   const monShort=s=>fmtDate(s,{month:'short'});
-  const when=d=>(d<=todayYmd()?'Paid ':'Due ')+dShort(d);
+  const when=d=>{const w=workingDayOnOrBefore(d);return (w<=todayYmd()?'Paid ':'Due ')+dLong(w)};
   /* all hours for each day: shifts, total, notes and the documents that hold them */
   function dayMap(){
     const m=new Map();
@@ -88,7 +88,7 @@ function makeDb(fs){
     $('hero-eyebrow').textContent=isCur?'Take-home so far this cycle':'Take-home for this cycle';
     $('hero-amount').textContent=money(cyc.net);
     $('hero-sub').textContent=!ready?'Loading your hours.':
-      (cyc.mins?fmtH(cyc.mins)+' at '+money(L.rate)+' an hour. ':'No hours logged yet. ')+'Paid around '+dLong(cyc.pay)+'.';
+      (cyc.mins?fmtH(cyc.mins)+' at '+money(L.rate)+' an hour. ':'No hours logged yet. ')+'Paid around '+dLong(workingDayOnOrBefore(cyc.pay))+'.';
     let split=stat('Before tax',money(cyc.gross))+
       (cyc.tax<0?stat('Tax refund',money(-cyc.tax)):stat('Income tax',money(cyc.tax)))+
       stat('National Insurance',money(cyc.ni));
