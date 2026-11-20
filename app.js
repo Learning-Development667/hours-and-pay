@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=18, APP_DATE='21 November 2026';
+const APP_VERSION=19, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -101,7 +101,7 @@ const APP_VERSION=18, APP_DATE='21 November 2026';
     const mc=parseCode(S.cfg.maTaxCode), taxFree=mc&&mc.kind==='allow'?Math.max(0,mc.allowance/12):0, th=[];
     if(isCur&&L.rate>0&&cyc.gross<TAX.niLower)th.push('National Insurance starts once this cycle\u2019s pay passes '+money(TAX.niLower)+' ('+money(TAX.niLower-cyc.gross)+' to go)');
     if(isCur&&L.rate>0&&mc&&mc.kind==='allow'&&cyc.gross<taxFree)th.push('income tax once it passes '+money(taxFree));
-    $('thresh').textContent=th.length?'Nothing is taken yet: '+th.join(', and ')+'.':'';
+    $('thresh').textContent=th.length?(th.length>1||cyc.tax<=0?'Nothing is taken yet: '+th.join(', and ')+'.':th[0].charAt(0).toUpperCase()+th[0].slice(1)+'.'):'';
     $('thresh').hidden=!th.length;
     const course=$('course'), target=S.cfg.target||0;
     if(isCur&&cyc.projected&&cyc.daysLeft>0&&L.rate>0){
@@ -135,18 +135,19 @@ const APP_VERSION=18, APP_DATE='21 November 2026';
       if(parts(d).d===mpDay&&!pDate)pDate=d;
       if(weekday(d)===pipWd){if(!pipFirst)pipFirst=d;pipLast=d}
     }
+    const LP=landingPay(S.cfg,cyc,L), cashTotal=round2(LP.amount+cyc.pension+cyc.pip);
     $('income').innerHTML=
-      '<div class="row"><span class="rl">MA Group</span><span class="rv num">'+esc(money(cyc.net))+'</span><span class="rs">'+esc((isCur?'Take-home so far, ':'Take-home, ')+fmtH(cyc.mins)+' worked'+(cyc.sspDays?' and '+cyc.sspDays+(cyc.sspDays===1?' day':' days')+' of sick pay':'')+'. '+when(cyc.pay))+'</span></div>'+
+      '<div class="row"><span class="rl">MA Group pay</span><span class="rv num">'+esc(money(LP.amount))+'</span><span class="rs">'+esc(when(LP.date)+', for hours from '+dShort(LP.from)+' to '+dShort(LP.to)+'. '+(LP.actual?'The amount on your payslip.':LP.known?'Estimate from the hours logged then.':'No hours were logged for those dates.'))+'</span></div>'+
       '<div class="row"><span class="rl">Military pension</span><span class="rv num">'+esc(money(cyc.pension))+'</span><span class="rs">'+esc((pDate?when(pDate)+'. ':'')+(cyc.pensionActual?'The monthly amount you entered':'Estimate after tax on code '+String(S.cfg.mpCode||'').toUpperCase()))+'</span></div>'+
       '<div class="row"><span class="rl">PIP</span><span class="rv num">'+esc(money(cyc.pip))+'</span><span class="rs">'+esc(cyc.pipCount+' '+pipDayName+(cyc.pipCount===1?'':'s')+' at '+money(S.cfg.pipWeekly||0)+(pipFirst?', '+dShort(pipFirst)+(pipLast!==pipFirst?' to '+dShort(pipLast):''):''))+'</span></div>'+
-      '<div class="row total"><span class="rl">Total this cycle</span><span class="rv num">'+esc(money(cyc.total))+'</span></div>';
+      '<div class="row total"><span class="rl">Total this cycle</span><span class="rv num">'+esc(money(cashTotal))+'</span></div>';
 
     /* monthly outgoings against this cycle's income */
     const outs=(Array.isArray(S.cfg.outgoings)?S.cfg.outgoings:[]).filter(o=>o&&typeof o.name==='string'&&Number(o.amount)>0);
-    const outTotal=round2(outs.reduce((t,o)=>t+Number(o.amount),0)), left=round2(cyc.total-outTotal);
+    const outTotal=round2(outs.reduce((t,o)=>t+Number(o.amount),0)), left=round2(cashTotal-outTotal);
     $('out-rows').innerHTML=outs.length?outs.map(o=>'<div class="row"><span class="rl">'+esc(o.name)+'</span><span class="rv num">'+esc(money(Number(o.amount)))+'</span></div>').join('')+
       '<div class="row"><span class="rl"><b>Total outgoings</b></span><span class="rv num"><b>'+esc(money(outTotal))+'</b></span></div>'+
-      '<div class="row total"><span class="rl">Left after outgoings</span><span class="rv num">'+esc(money(left))+'</span><span class="rs"><span class="pill '+(left>=0?'ok':'short')+'">'+(left>=0?'Covered':'Short by '+esc(money(-left)))+'</span> '+esc(isCur?'Against this cycle\u2019s income so far.':'Against this cycle\u2019s income.')+'</span></div>'
+      '<div class="row total"><span class="rl">Left after outgoings</span><span class="rv num">'+esc(money(left))+'</span><span class="rs"><span class="pill '+(left>=0?'ok':'short')+'">'+(left>=0?'Covered':'Short by '+esc(money(-left)))+'</span> '+esc('Against the money that lands from '+dShort(cyc.start)+' to '+dShort(cyc.end)+'.')+'</span></div>'
       :'<p class="empty">No outgoings yet. Choose Change to add the amounts that leave your account each month.</p>';
     $('out-edit').hidden=!S.canWrite;
 
@@ -178,7 +179,7 @@ const APP_VERSION=18, APP_DATE='21 November 2026';
         (tp?'<circle cx="'+tp[0].toFixed(1)+'" cy="'+tp[1].toFixed(1)+'" r="6" class="run-dot"/>':'')+'</svg>';
       $('run-start').textContent=money(R.start).replace('-','\u2212')+' on '+dShort(cyc.start);
       $('run-end').textContent=(R.end<0?'\u2212':'+')+money(Math.abs(R.end))+' by '+dShort(cyc.end)+' (forecast)';
-      $('run-note').textContent='Starts at minus your monthly outgoings. Adds your take-home as you work, sick pay, the pension on its pay day and PIP each '+pipDayName+'. Solid line: so far. Dotted: if you keep to your weekly aim.';
+      $('run-note').textContent='Money as it lands in your account: starts at minus your monthly outgoings, then adds your MA Group pay on '+dShort(R.land.date)+', the pension on its pay day and PIP each '+pipDayName+'. Solid line: so far. Dotted: still to come. The hours you work this cycle are paid on '+dShort(workingDayOnOrBefore(cyc.pay))+', in the next cycle.';
     }
 
     /* this tax year */
@@ -443,6 +444,7 @@ const APP_VERSION=18, APP_DATE='21 November 2026';
         f.outgoings.filter(o=>o&&typeof o.name==='string'&&Number(o.amount)>0).slice(0,30).forEach(o=>{const n={name:o.name.slice(0,40),amount:Number(o.amount)};const i=merged.findIndex(x=>x.name.trim().toLowerCase()===n.name.trim().toLowerCase());if(i>=0)merged[i]=n;else merged.push(n)});
         changes.outgoings=merged;
       }
+      if(f.netPaid&&typeof f.netPaid==='object'){const np=Object.assign({},S.cfg.netPaid||{});Object.keys(f.netPaid).forEach(k=>{if(/^\d{4}-\d{2}$/.test(k)&&Number(f.netPaid[k])>=0)np[k]=Number(f.netPaid[k])});changes.netPaid=np}
       await S.db.doc('config/main').set(Object.assign({},S.cfg,changes));
       toast('Figures updated'+(typeof f.note==='string'&&f.note?': '+f.note.slice(0,80):''));
     }catch(e){}
