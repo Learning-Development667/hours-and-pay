@@ -264,3 +264,8 @@ dialog::backdrop{background:var(--shade)}
 .run-dot{fill:var(--gold-fill);stroke:var(--surface);stroke-width:2}
 .run-ends{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:6px}
 .runcard .pill{margin-right:0}
+
+/* 21 November 2026: sheet title bar stays in view while the sheet scrolls; date boxes fit their column on iPhone */
+.sheet-head{position:sticky;top:0;z-index:3;background:var(--surface);margin:-22px -20px 0;padding:14px 20px 12px;border-bottom:1px solid var(--line)}
+.field input[type="date"]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:block;text-align:left}
+.field input[type="date"]::-webkit-date-and-time-value{text-align:left}
