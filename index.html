@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=5">
+<link rel="stylesheet" href="styles.css?v=7">
 </head>
 <body>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -54,34 +54,38 @@
 
   <div class="notice" id="notice" hidden></div>
 
-  <section class="hero" aria-labelledby="hero-eyebrow">
-    <div class="hero-main">
-      <div class="hero-fig">
-        <p class="eyebrow" id="hero-eyebrow">Take-home so far this cycle</p>
-        <p class="amount" id="hero-amount">£0.00</p>
-        <p class="hero-sub" id="hero-sub">Loading your hours.</p>
+<div class="lead">
+  <section class="card" id="cal-card" aria-labelledby="h-cal">
+      <div class="cal-head"><h2 id="h-cal">Hours worked</h2><span id="cal-sum"></span></div>
+      <p class="hint cal-hint" id="cal-hint">Tap a day to add or change its shifts.</p>
+      <div class="cal-dow" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+      <div class="cal" id="cal"></div>
+    </section>
+
+    <section class="hero" aria-labelledby="hero-eyebrow">
+      <div class="hero-main">
+        <div class="hero-fig">
+          <p class="eyebrow" id="hero-eyebrow">Take-home so far this cycle</p>
+          <p class="amount" id="hero-amount">£0.00</p>
+          <p class="hero-sub" id="hero-sub">Loading your hours.</p>
+        </div>
+        <div class="ring" id="ring" hidden>
+          <svg viewBox="0 0 104 104" role="img" id="ring-svg" aria-label="Hours this week">
+            <circle class="ring-track" cx="52" cy="52" r="44" fill="none" stroke-width="8"/>
+            <circle class="ring-fill" id="ring-fill" cx="52" cy="52" r="44" fill="none" stroke-width="8" stroke-linecap="round" transform="rotate(-90 52 52)" stroke-dasharray="276.46" stroke-dashoffset="276.46"/>
+          </svg>
+          <div class="ring-text"><strong id="ring-value">0h</strong><span id="ring-label">this week</span><div class="met" id="ring-met" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Weekly aim met</div></div>
+        </div>
       </div>
-      <div class="ring" id="ring" hidden>
-        <svg viewBox="0 0 104 104" role="img" id="ring-svg" aria-label="Hours this week">
-          <circle class="ring-track" cx="52" cy="52" r="44" fill="none" stroke-width="8"/>
-          <circle class="ring-fill" id="ring-fill" cx="52" cy="52" r="44" fill="none" stroke-width="8" stroke-linecap="round" transform="rotate(-90 52 52)" stroke-dasharray="276.46" stroke-dashoffset="276.46"/>
-        </svg>
-        <div class="ring-text"><strong id="ring-value">0h</strong><span id="ring-label">this week</span><div class="met" id="ring-met" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>Weekly aim met</div></div>
-      </div>
-    </div>
-    <dl class="split" id="split"></dl>
-    <p class="course" id="course" hidden></p>
-    <p class="basis" id="basis"></p>
-  </section>
+      <dl class="split" id="split"></dl>
+      <p class="course" id="course" hidden></p>
+      <p class="basis" id="basis"></p>
+    </section>
+  </div>
 
   <div class="cols">
     <div class="col">
-      <section class="card o1" id="cal-card" aria-labelledby="h-cal">
-        <div class="cal-head"><h2 id="h-cal">Hours worked</h2><span id="cal-sum"></span></div>
-        <p class="hint cal-hint" id="cal-hint">Tap a day to add or change its shifts.</p>
-        <div class="cal-dow" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
-        <div class="cal" id="cal"></div>
-      </section>
+
 
       <section class="o4" aria-labelledby="h-entries">
         <div class="sec-head"><h2 id="h-entries">Hours logged</h2><span id="entries-sum"></span></div>
