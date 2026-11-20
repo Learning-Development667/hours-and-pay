@@ -96,7 +96,9 @@ function makeDb(fs){
     $('split').innerHTML=split;
     const course=$('course'), target=S.cfg.target||0;
     if(isCur&&cyc.projected&&cyc.daysLeft>0&&L.rate>0){
-      course.innerHTML='On course for about <b>'+esc(money(cyc.projected.net))+'</b> take-home if you keep to '+esc(String(target))+' hours a week from here ('+esc(fmtH(cyc.projected.mins))+' in all).';
+      const pr=cyc.projected;
+      course.innerHTML='On course for about <b>'+esc(money(pr.net))+'</b> take-home on '+esc(dLong(workingDayOnOrBefore(cyc.pay)))+' if you keep to '+esc(String(target))+' hours a week from here ('+esc(fmtH(pr.mins))+' in all): '+
+        esc(money(pr.gross))+' before tax, '+esc(money(Math.max(0,pr.tax)))+' income tax, '+esc(money(pr.ni))+' National Insurance'+(pr.pens>0?', '+esc(money(pr.pens))+' workplace pension':'')+'.';
       course.hidden=false;
     }else course.hidden=true;
     $('basis').textContent=cyc.basis==='year'?'Tax worked out on the year so far, from your payslip totals.':
