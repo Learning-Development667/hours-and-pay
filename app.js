@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=20, APP_DATE='21 November 2026';
+const APP_VERSION=21, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -89,7 +89,8 @@ const APP_VERSION=20, APP_DATE='21 November 2026';
     n.innerHTML=note; n.hidden=!note;
 
     /* pay card */
-    $('hero-eyebrow').textContent=(isCur?'Earned so far this cycle':'Earned this cycle')+', paid '+dShort(workingDayOnOrBefore(cyc.pay));
+    const payOn=fmtDate(workingDayOnOrBefore(cyc.pay),{day:'numeric',month:'long'});
+    $('hero-eyebrow').textContent=isCur?'Take-home for '+payOn+', so far':cyc.pay<today?'Take-home paid '+payOn:'Take-home for '+payOn;
     $('hero-amount').textContent=money(cyc.net);
     $('hero-sub').textContent=!ready?'Loading your hours.':
       (cyc.mins?fmtH(cyc.mins)+' at '+money(L.rate)+' an hour. ':'No hours logged yet. ')+(cyc.sspDays?'Sick pay for '+cyc.sspDays+(cyc.sspDays===1?' day. ':' days. '):'')+(cyc.holDays?'Holiday pay for '+cyc.holDays+(cyc.holDays===1?' day. ':' days. '):'')+'Paid around '+dLong(workingDayOnOrBefore(cyc.pay))+'.';
@@ -222,8 +223,9 @@ const APP_VERSION=20, APP_DATE='21 November 2026';
     for(let i=(weekday(cyc.start)+6)%7;i>0;i--)cal+='<span class="cal-pad" aria-hidden="true"></span>';
     for(let d=cyc.start;d<=cyc.end;d=addDays(d,1)){
       const x=dm.get(d), mins=x?x.mins:0, p=parts(d), mon=d===cyc.start||p.d===1, sick=!mins&&L.sspSet.has(d), hol=!!(x&&x.holiday);
-      const cls='cal-day'+(hol?' hol':'')+(mins?' has':'')+(d===today?' today':'')+(d>today?' future':'');
-      const label=dFull(d)+(d===today?', today':'')+(hol?', holiday':mins?', '+fmtH(mins)+' worked':sick?', sick pay':', no hours');
+      const off=!mins&&!hol&&d<today;
+      const cls='cal-day'+(hol?' hol':'')+(mins?' has':'')+(off?' off':'')+(d===today?' today':'')+(d>today?' future':'');
+      const label=dFull(d)+(d===today?', today':'')+(hol?', holiday':mins?', '+fmtH(mins)+' worked':sick?', not worked, sick pay':off?', not worked':', no hours yet');
       cal+='<button type="button" class="'+cls+'" data-day="'+d+'" aria-label="'+esc(label)+'"><small>'+(mon?esc(monShort(d)):'')+'</small><span class="cd-n">'+p.d+'</span><span class="cd-h'+(sick?' sick':'')+(hol?' holl':'')+'">'+(hol?'Hol':mins?esc(fmtCompact(mins)):sick?'SSP':'')+'</span></button>';
     }
     $('cal').innerHTML=cal;
@@ -273,20 +275,42 @@ const APP_VERSION=20, APP_DATE='21 November 2026';
   $('btn-prev').addEventListener('click',()=>{const L=S.ledger,i=L.cycles.findIndex(c=>c.start===S.view);if(i>0){S.view=L.cycles[i-1].start;render()}});
   $('btn-next').addEventListener('click',()=>{const L=S.ledger,i=L.cycles.findIndex(c=>c.start===S.view);if(i<L.cycles.length-1){S.view=L.cycles[i+1].start;render()}});
 
+  /* Hours logged folds away; each phone remembers whether it was open. */
+  try{if(localStorage.getItem('hp-fold-entries')==='1')$('fold-entries').open=true}catch(e){}
+  $('fold-entries').addEventListener('toggle',()=>{try{localStorage.setItem('hp-fold-entries',$('fold-entries').open?'1':'0')}catch(e){}});
+
   /* ---------- a day's shifts ---------- */
   const X_ICON='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
-  function readRows(){return [...document.querySelectorAll('#shifts .shift')].map(r=>({start:r.querySelector('[data-k="start"]').value,end:r.querySelector('[data-k="end"]').value}))}
+  function readRows(){return [...document.querySelectorAll('#shifts .shift')].map(r=>({start:normTime(r.querySelector('[data-k="start"]').value),end:normTime(r.querySelector('[data-k="end"]').value)}))}
+  const CLOCK='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+  function timeField(id,k,label,val){
+    return '<div class="field"><label for="'+id+'">'+label+'</label><div class="tbox"><input id="'+id+'" data-k="'+k+'" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="hh:mm" value="'+esc(val)+'">'+
+      '<span class="wheel">'+CLOCK+'<input type="time" data-wheel="'+id+'" aria-label="'+esc(label+' on a wheel')+'"></span></div><span class="err" hidden></span></div>';
+  }
+  /* The wheel opens on the typed time, or the shift before it, never on the clock time (which crept a minute each time). */
+  function syncWheels(){
+    let prev='09:00';
+    document.querySelectorAll('#shifts [data-k]').forEach(t=>{
+      const v=normTime(t.value), ok=timeMins(v)!==null, w=document.querySelector('[data-wheel="'+t.id+'"]');
+      if(w)w.value=ok?v:prev; if(ok)prev=v;
+    });
+  }
   function drawShifts(rows){
     $('shifts').innerHTML=rows.map((r,i)=>'<div class="shift"><p class="shift-n">Shift '+(i+1)+'</p>'+
-      '<div class="field"><label for="sh'+i+'s">Start</label><input id="sh'+i+'s" data-k="start" type="time" value="'+esc(r.start)+'"><span class="err" hidden></span></div>'+
-      '<div class="field"><label for="sh'+i+'e">Finish</label><input id="sh'+i+'e" data-k="end" type="time" value="'+esc(r.end)+'"><span class="err" hidden></span></div>'+
+      timeField('sh'+i+'s','start','Start',r.start)+timeField('sh'+i+'e','end','Finish',r.end)+
       (rows.length>1?'<button class="icon-btn" type="button" data-remove-shift="'+i+'" aria-label="Remove shift '+(i+1)+'">'+X_ICON+'</button>':'<span></span>')+'</div>').join('');
     $('add-shift').hidden=rows.length>=6;
-    showDayTotal();
+    syncWheels(); showDayTotal();
   }
   function showDayTotal(){$('day-total').textContent=fmtH(shiftMins(readRows()))}
-  $('shifts').addEventListener('input',showDayTotal);
-  $('shifts').addEventListener('change',showDayTotal);
+  function wheelPicked(ev){
+    const w=ev.target; if(!w.dataset||!w.dataset.wheel||!w.value)return;
+    const t=$(w.dataset.wheel); t.value=w.value; clearBad(t);
+  }
+  $('shifts').addEventListener('input',ev=>{wheelPicked(ev);syncWheels();showDayTotal()});
+  $('shifts').addEventListener('change',ev=>{wheelPicked(ev);syncWheels();showDayTotal()});
+  $('shifts').addEventListener('focusout',ev=>{const t=ev.target;if(t.dataset&&t.dataset.k){const v=normTime(t.value);if(v!==t.value)t.value=v}});
+  $('shifts').addEventListener('click',ev=>{const w=ev.target.closest&&ev.target.closest('[data-wheel]');if(w&&w.showPicker){try{w.showPicker()}catch(e){}}});
   $('add-shift').addEventListener('click',()=>{
     const rows=readRows(); rows.push({start:'',end:''}); drawShifts(rows);
     const all=document.querySelectorAll('#shifts [data-k="start"]'); all[all.length-1].focus();
@@ -325,10 +349,13 @@ const APP_VERSION=20, APP_DATE='21 November 2026';
     rowsEl.forEach(r=>{
       const si=r.querySelector('[data-k="start"]'), ei=r.querySelector('[data-k="end"]');
       clearBad(si);clearBad(ei);
+      si.value=normTime(si.value); ei.value=normTime(ei.value);
       if(!si.value&&!ei.value)return;
       const s=timeMins(si.value), e=timeMins(ei.value);
-      if(s===null)bad(si,'Missing information');
-      if(e===null)bad(ei,'Missing information');
+      if(s===null&&si.value){bad(si,'Check this: a time like 0630 or 17:03');}
+      if(e===null&&ei.value){bad(ei,'Check this: a time like 0630 or 17:03');}
+      if(s===null&&!si.value)bad(si,'Missing information');
+      if(e===null&&!ei.value)bad(ei,'Missing information');
       else if(s!==null&&e<=s)bad(ei,'Check this: finish after the start');
       if(s!==null&&e!==null&&e>s)good.push({start:si.value,end:ei.value,s:s,e:e,el:si});
     });

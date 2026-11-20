@@ -279,3 +279,31 @@ dialog::backdrop{background:var(--shade)}
 .cal-hol{margin:-8px 0 12px}
 .holtoggle{display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--raised);font-size:16px;cursor:pointer}
 .holtoggle input{width:24px;height:24px;accent-color:var(--gold-fill);flex:none}
+
+/* 21 November 2026: typed times with a wheel button; days not worked; Hours logged folds away */
+.tbox{position:relative}
+.tbox input[type="text"]{padding:0 46px 0 12px;font-variant-numeric:tabular-nums}
+.wheel{position:absolute;top:2px;right:2px;width:44px;height:44px;display:grid;place-items:center;color:var(--gold);border-radius:10px}
+.wheel input[type="time"]{position:absolute;inset:0;width:100%;height:100%;min-height:0;opacity:0;border:0;padding:0;margin:0;cursor:pointer;-webkit-appearance:none;appearance:none}
+.wheel:focus-within{outline:3px solid var(--gold);outline-offset:-2px}
+:root{--off-bg:rgba(240,148,137,.10);--off-line:rgba(240,148,137,.45)}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--off-bg:rgba(169,51,40,.06);--off-line:#DDAAA3}}
+:root[data-theme="light"]{--off-bg:rgba(169,51,40,.06);--off-line:#DDAAA3}
+.cal-day.off{background:var(--off-bg);border-color:var(--off-line)}
+.cal-key{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:12px;font-size:14px;color:var(--muted)}
+.cal-key span{display:inline-flex;align-items:center;gap:6px}
+.cal-key i{width:14px;height:14px;border-radius:4px;border:1px solid var(--line);background:var(--raised)}
+.cal-key .k-has{background:var(--gold-soft);border-color:var(--hair)}
+.cal-key .k-off{background:var(--off-bg);border-color:var(--off-line)}
+.cal-key .k-hol{background:var(--hol-bg);border-color:var(--hol-fg)}
+.fold>summary{list-style:none;cursor:pointer;min-height:48px;align-items:center}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary>span{display:inline-flex;align-items:center;gap:8px}
+.fold .chev{color:var(--gold);transition:transform .2s}
+.fold[open] .chev{transform:rotate(180deg)}
+@media (prefers-reduced-motion: reduce){.fold .chev{transition:none}}
+.shift{grid-template-columns:minmax(0,1fr) minmax(0,1fr);row-gap:2px}
+.shift-n{grid-column:1;grid-row:1;align-self:center;min-height:44px;display:flex;align-items:center}
+.shift .icon-btn{grid-column:2;grid-row:1;justify-self:end;margin-top:0;width:44px;height:44px}
+.shift>.field{grid-row:2}
+.shift>span:empty{display:none}

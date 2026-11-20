@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=13">
+<link rel="stylesheet" href="styles.css?v=15">
 </head>
 <body>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -63,6 +63,7 @@
     <p class="hint cal-hol" id="cal-hol" hidden></p>
       <div class="cal-dow" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
       <div class="cal" id="cal"></div>
+      <p class="cal-key" aria-hidden="true"><span><i class="k-has"></i>Worked</span><span><i class="k-off"></i>Not worked</span><span><i class="k-hol"></i>Holiday</span></p>
     </section>
 
     <section class="hero" aria-labelledby="hero-eyebrow">
@@ -100,8 +101,10 @@
 
 
       <section class="o4" aria-labelledby="h-entries">
-        <div class="sec-head"><h2 id="h-entries">Hours logged</h2><span id="entries-sum"></span></div>
-        <div class="rows" id="entries"></div>
+        <details class="fold" id="fold-entries">
+          <summary class="sec-head"><h2 id="h-entries">Hours logged</h2><span><span id="entries-sum"></span><svg class="chev" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></summary>
+          <div class="rows" id="entries"></div>
+        </details>
       </section>
 
       <section class="o3" aria-labelledby="h-weeks">
@@ -258,7 +261,7 @@
   </form>
 </dialog>
 <script src="config.js?v=1"></script>
-<script src="calc.js?v=9"></script>
-<script type="module" src="app.js?v=19"></script>
+<script src="calc.js?v=10"></script>
+<script type="module" src="app.js?v=21"></script>
 </body>
 </html>

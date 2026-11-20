@@ -159,6 +159,8 @@ function parseMoney(str){
 
 /* Shifts: "HH:MM" start and finish on the same day. */
 function timeMins(t){const m=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(t||'');return m?Number(m[1])*60+Number(m[2]):null}
+/* A typed time: 0630, 630, 6, 17, 6:30, 6.30 or 6 30 become 06:30 style; anything else is returned as typed. */
+function normTime(t){const v=String(t||'').trim();let m=/^(\d{1,2})[:.\s]?(\d{2})$/.exec(v)||/^(\d{1,2})$/.exec(v);if(!m)return v;const h=Number(m[1]),mi=m[2]===undefined?0:Number(m[2]);if(h>23||mi>59)return v;return (h<10?'0':'')+h+':'+(mi<10?'0':'')+mi}
 function shiftMins(shifts){return (shifts||[]).reduce((a,s)=>{const x=timeMins(s.start),y=timeMins(s.end);return a+(x!==null&&y!==null&&y>x?y-x:0)},0)}
 
 /* A pay date that lands on a weekend or an England bank holiday is paid on the working day before. */
