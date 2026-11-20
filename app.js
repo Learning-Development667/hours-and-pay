@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=19, APP_DATE='21 November 2026';
+const APP_VERSION=20, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -89,7 +89,7 @@ const APP_VERSION=19, APP_DATE='21 November 2026';
     n.innerHTML=note; n.hidden=!note;
 
     /* pay card */
-    $('hero-eyebrow').textContent=isCur?'Take-home so far this cycle':'Take-home for this cycle';
+    $('hero-eyebrow').textContent=(isCur?'Earned so far this cycle':'Earned this cycle')+', paid '+dShort(workingDayOnOrBefore(cyc.pay));
     $('hero-amount').textContent=money(cyc.net);
     $('hero-sub').textContent=!ready?'Loading your hours.':
       (cyc.mins?fmtH(cyc.mins)+' at '+money(L.rate)+' an hour. ':'No hours logged yet. ')+(cyc.sspDays?'Sick pay for '+cyc.sspDays+(cyc.sspDays===1?' day. ':' days. '):'')+(cyc.holDays?'Holiday pay for '+cyc.holDays+(cyc.holDays===1?' day. ':' days. '):'')+'Paid around '+dLong(workingDayOnOrBefore(cyc.pay))+'.';
