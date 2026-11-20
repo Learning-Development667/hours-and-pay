@@ -237,3 +237,13 @@ dialog::backdrop{background:var(--shade)}
 .update{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid var(--hair);border-radius:14px;padding:10px 12px 10px 16px;background:var(--surface);font-size:16px;font-weight:500}
 .update .primary{width:auto;min-height:44px;padding:0 18px;font-size:16px}
 .thresh{font-size:14px}
+
+/* 21 November 2026: monthly outgoings */
+.sec-head .link{font-size:15px;min-height:44px}
+.outs{display:flex;flex-direction:column;gap:12px}
+.out{display:grid;grid-template-columns:minmax(0,1fr) 112px 48px;gap:6px 10px;align-items:start}
+.out .icon-btn{margin-top:27px}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-size:13px;font-weight:600;margin-right:6px}
+.pill.ok{color:var(--good);border:1px solid var(--good)}
+.pill.short{color:var(--bad);border:1px solid var(--bad)}
+@media (max-width:420px){.out{grid-template-columns:minmax(0,1fr) 48px}.out .field:first-child{grid-column:1/-1}.out{padding-top:10px;border-top:1px solid var(--line)}.out:first-child{border-top:0;padding-top:0}}

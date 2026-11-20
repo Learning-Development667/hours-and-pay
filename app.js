@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=11, APP_DATE='21 November 2026';
+const APP_VERSION=12, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -49,7 +49,7 @@ const APP_VERSION=11, APP_DATE='21 November 2026';
   function todayYmd(){const d=new Date();return ymd(d.getFullYear(),d.getMonth(),d.getDate())}
 
   const DEFAULTS={salary:0,contractHours:37.5,salaryEstimated:false,target:0,maTaxCode:'1257L',pensionPct:0,
-    ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:0,mpCode:'BR',mpActual:null,pipWeekly:0,pipDay:2,mpDay:22,sspDaily:0,sspFrom:'',mpTaxYtd:null,people:[]};
+    ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:0,mpCode:'BR',mpActual:null,pipWeekly:0,pipDay:2,mpDay:22,sspDaily:0,sspFrom:'',mpTaxYtd:null,outgoings:[],people:[]};
   const S={entries:[],cfg:Object.assign({},DEFAULTS),hasCfg:false,got:{hours:false,cfg:false},status:'loading',
     view:null,canWrite:true,db:null,day:null,ledger:null};
 
@@ -140,6 +140,15 @@ const APP_VERSION=11, APP_DATE='21 November 2026';
       '<div class="row"><span class="rl">PIP</span><span class="rv num">'+esc(money(cyc.pip))+'</span><span class="rs">'+esc(cyc.pipCount+' '+pipDayName+(cyc.pipCount===1?'':'s')+' at '+money(S.cfg.pipWeekly||0)+(pipFirst?', '+dShort(pipFirst)+(pipLast!==pipFirst?' to '+dShort(pipLast):''):''))+'</span></div>'+
       '<div class="row total"><span class="rl">Total this cycle</span><span class="rv num">'+esc(money(cyc.total))+'</span></div>';
 
+    /* monthly outgoings against this cycle's income */
+    const outs=(Array.isArray(S.cfg.outgoings)?S.cfg.outgoings:[]).filter(o=>o&&typeof o.name==='string'&&Number(o.amount)>0);
+    const outTotal=round2(outs.reduce((t,o)=>t+Number(o.amount),0)), left=round2(cyc.total-outTotal);
+    $('out-rows').innerHTML=outs.length?outs.map(o=>'<div class="row"><span class="rl">'+esc(o.name)+'</span><span class="rv num">'+esc(money(Number(o.amount)))+'</span></div>').join('')+
+      '<div class="row"><span class="rl"><b>Total outgoings</b></span><span class="rv num"><b>'+esc(money(outTotal))+'</b></span></div>'+
+      '<div class="row total"><span class="rl">Left after outgoings</span><span class="rv num">'+esc(money(left))+'</span><span class="rs"><span class="pill '+(left>=0?'ok':'short')+'">'+(left>=0?'Covered':'Short by '+esc(money(-left)))+'</span> '+esc(isCur?'Against this cycle\u2019s income so far.':'Against this cycle\u2019s income.')+'</span></div>'
+      :'<p class="empty">No outgoings yet. Choose Change to add the amounts that leave your account each month.</p>';
+    $('out-edit').hidden=!S.canWrite;
+
     /* this tax year */
     const Y=yearForecast(S.entries,S.cfg,today);
     $('year-range').textContent=Y.ty+' to '+(Y.ty+1);
@@ -219,6 +228,7 @@ const APP_VERSION=11, APP_DATE='21 November 2026';
     const t=ev.target.closest('button'); if(!t)return;
     if(t.dataset.view){S.view=t.dataset.view;render();window.scrollTo({top:0,behavior:'smooth'})}
     else if(t.dataset.day){openDay(t.dataset.day)}
+    else if(t.dataset.removeOut!==undefined){const r=readOuts();r.splice(Number(t.dataset.removeOut),1);drawOuts(r.length?r:[{name:'',amount:''}])}
     else if(t.dataset.removeShift!==undefined){const rows=readRows();rows.splice(Number(t.dataset.removeShift),1);drawShifts(rows);const f=document.querySelector('#shifts [data-k="start"]');if(f)f.focus()}
     else if(t.dataset.openSettings!==undefined){openSettings()}
     else if(t.dataset.close!==undefined){t.closest('dialog').close()}
@@ -292,6 +302,38 @@ const APP_VERSION=11, APP_DATE='21 November 2026';
     clr.disabled=true;
     try{for(const id of day.ids)await S.db.collection('hours').doc(id).delete();$('dlg-day').close();toast('Cleared '+dLong(day.date))}catch(e){writeFailed(e)}
     clr.disabled=false;
+  });
+
+  /* ---------- monthly outgoings ---------- */
+  const X2='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  function readOuts(){return [...document.querySelectorAll('#outs .out')].map(r=>({name:r.querySelector('[data-k="name"]').value,amount:r.querySelector('[data-k="amount"]').value}))}
+  function drawOuts(rows){
+    $('outs').innerHTML=rows.map((r,i)=>'<div class="out">'+
+      '<div class="field"><label for="on'+i+'">What</label><input id="on'+i+'" data-k="name" type="text" maxlength="40" autocomplete="off" value="'+esc(r.name)+'"><span class="err" hidden></span></div>'+
+      '<div class="field"><label for="oa'+i+'">£ a month</label><input id="oa'+i+'" data-k="amount" type="text" inputmode="decimal" autocomplete="off" value="'+esc(r.amount)+'"><span class="err" hidden></span></div>'+
+      '<button class="icon-btn" type="button" data-remove-out="'+i+'" aria-label="Remove '+esc(r.name||'this outgoing')+'">'+X2+'</button></div>').join('');
+    $('out-add').hidden=rows.length>=30;
+  }
+  $('out-edit').addEventListener('click',()=>{
+    const o=(Array.isArray(S.cfg.outgoings)?S.cfg.outgoings:[]).map(x=>({name:x.name||'',amount:x.amount!=null?String(x.amount):''}));
+    drawOuts(o.length?o:[{name:'',amount:''}]); $('dlg-out').showModal();
+  });
+  $('out-add').addEventListener('click',()=>{const r=readOuts();r.push({name:'',amount:''});drawOuts(r);const all=document.querySelectorAll('#outs [data-k="name"]');all[all.length-1].focus()});
+  $('out-form').addEventListener('submit',async ev=>{
+    ev.preventDefault(); if(!S.db)return;
+    let firstBad=null; const bad=(el,m)=>{markBad(el,m);if(!firstBad)firstBad=el}; const list=[];
+    document.querySelectorAll('#outs .out').forEach(r=>{
+      const n=r.querySelector('[data-k="name"]'), a=r.querySelector('[data-k="amount"]'); clearBad(n);clearBad(a);
+      if(!n.value.trim()&&!a.value.trim())return;
+      const v=parseMoney(a.value);
+      if(!n.value.trim())bad(n,'Missing information');
+      if(!a.value.trim())bad(a,'Missing information'); else if(v===null||v<=0||v>100000)bad(a,'Check this');
+      if(n.value.trim()&&v>0&&v<=100000)list.push({name:n.value.trim().slice(0,40),amount:v});
+    });
+    if(firstBad){firstBad.focus();return}
+    const btn=$('out-save'); btn.disabled=true;
+    try{await S.db.doc('config/main').set(Object.assign({},S.cfg,{outgoings:list}));$('dlg-out').close();toast('Outgoings saved')}catch(e){writeFailed(e)}
+    btn.disabled=false;
   });
 
   /* ---------- settings ---------- */
