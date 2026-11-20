@@ -57,13 +57,18 @@ function niDue(gross){
 function hourlyRate(cfg){return cfg.salary>0&&cfg.contractHours>0?round2(cfg.salary/52/cfg.contractHours):0}
 
 /* One cycle's pay. `base` is the year so far before this pay day, when it is known. */
-/* Statutory Sick Pay: a day's rate for each weekday with no hours, from the start date, for up to 28 weeks. */
+/* Statutory Sick Pay: paid for weekdays inside a run of four or more days in a row with no work
+   (weekends count towards the four), from the start date, for at most 28 weeks of 5 days.
+   A day with any hours is not a sick day. Only days already passed are counted. */
 var SSP_WEEKS=28;
-function sspEnd(cfg){return isYmd(cfg.sspFrom)?addDays(cfg.sspFrom,SSP_WEEKS*7-1):''}
-function isSspDay(d,cfg,today,worked){
-  if(!(cfg.sspDaily>0)||!isYmd(cfg.sspFrom))return false;
-  const wd=weekday(d);
-  return wd>=1&&wd<=5&&d>=cfg.sspFrom&&d<=sspEnd(cfg)&&d<=today&&!worked.has(d);
+function sspDaySet(cfg,today,worked){
+  const set=new Set();
+  if(!(cfg.sspDaily>0)||!isYmd(cfg.sspFrom))return set;
+  const cap=SSP_WEEKS*5; let run=[];
+  const flush=()=>{if(run.length>=4)for(const d of run){const wd=weekday(d);if(wd>=1&&wd<=5&&set.size<cap)set.add(d)}run=[]};
+  for(let d=cfg.sspFrom;d<=today;d=addDays(d,1)){if(worked.has(d))flush();else run.push(d)}
+  flush();
+  return set;
 }
 /* The workplace pension is taken after tax (relief at source), so it does not lower taxable pay. */
 function payFor(mins,rate,cfg,code,base,month,ssp){
@@ -95,7 +100,7 @@ function buildLedger(entries,cfg,today){
   let anchor=null;
   if(isYmd(cfg.ytdDate)&&cfg.ytdTaxable>=0&&cfg.ytdTax>=0&&cfg.ytdTaxable!==null&&cfg.ytdTax!==null)
     anchor={payDate:cfg.ytdDate,cum:cfg.ytdTaxable,paid:cfg.ytdTax,ty:taxYearOf(cfg.ytdDate),m:taxMonthOf(cfg.ytdDate)};
-  const pn=pensionNet(cfg), target=cfg.target||0;
+  const pn=pensionNet(cfg), target=cfg.target||0, sspSet=sspDaySet(cfg,today,worked);
   const cycles=[]; let chain=null, stale=false;
   for(let c=cycleOf(first);c.start<=last;c=cycleOf(addDays(c.end,1))){
     const mins=byCycle.get(c.start)||0, ty=taxYearOf(c.pay), m=taxMonthOf(c.pay);
@@ -110,7 +115,7 @@ function buildLedger(entries,cfg,today){
       if(!chain.broken)base={cum:chain.cum,paid:chain.paid};
     }
     let sspDays=0;
-    for(let d=c.start;d<=c.end;d=addDays(d,1))if(isSspDay(d,cfg,today,worked))sspDays++;
+    for(let d=c.start;d<=c.end;d=addDays(d,1))if(sspSet.has(d))sspDays++;
     const ssp=round2(sspDays*(cfg.sspDaily||0));
     const pay=payFor(mins,rate,cfg,code,base,m,ssp);
     const row=Object.assign({start:c.start,end:c.end,pay:c.pay,ty:ty,sspDays:sspDays},pay);
@@ -126,7 +131,7 @@ function buildLedger(entries,cfg,today){
     row.total=round2(row.net+row.pension+row.pip);
     cycles.push(row);
   }
-  return {cycles:cycles,current:cur,rate:rate,codeOk:!!code,stale:stale,worked:worked};
+  return {cycles:cycles,current:cur,rate:rate,codeOk:!!code,stale:stale,worked:worked,sspSet:sspSet};
 }
 function parseHours(str){
   const s=String(str||'').trim().toLowerCase().replace(',','.');

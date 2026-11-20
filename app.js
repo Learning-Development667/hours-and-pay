@@ -151,7 +151,7 @@ function makeDb(fs){
     let cal='';
     for(let i=(weekday(cyc.start)+6)%7;i>0;i--)cal+='<span class="cal-pad" aria-hidden="true"></span>';
     for(let d=cyc.start;d<=cyc.end;d=addDays(d,1)){
-      const x=dm.get(d), mins=x?x.mins:0, p=parts(d), mon=d===cyc.start||p.d===1, sick=!mins&&isSspDay(d,S.cfg,today,L.worked);
+      const x=dm.get(d), mins=x?x.mins:0, p=parts(d), mon=d===cyc.start||p.d===1, sick=!mins&&L.sspSet.has(d);
       const cls='cal-day'+(mins?' has':'')+(d===today?' today':'')+(d>today?' future':'');
       const label=dFull(d)+(d===today?', today':'')+(mins?', '+fmtH(mins)+' worked':sick?', sick pay':', no hours');
       cal+='<button type="button" class="'+cls+'" data-day="'+d+'" aria-label="'+esc(label)+'"><small>'+(mon?esc(monShort(d)):'')+'</small><span class="cd-n">'+p.d+'</span><span class="cd-h'+(sick?' sick':'')+'">'+(mins?esc(fmtCompact(mins)):sick?'SSP':'')+'</span></button>';
@@ -272,7 +272,7 @@ function makeDb(fs){
     const s=parseMoney($('s-salary').value), h=parseMoney($('s-contract').value);
     $('s-rate').textContent=s>0&&h>0?money(s/52/h)+' an hour':'not set';
   }
-  function showSspEnd(){const f=$('s-ssp-from').value;$('s-ssp-end').textContent=isYmd(f)?'28 weeks from this date ends on '+dYear(addDays(f,SSP_WEEKS*7-1))+'.':''}
+  function showSspEnd(){const used=S.ledger?S.ledger.sspSet.size:0;$('s-ssp-end').textContent=isYmd($('s-ssp-from').value)?'Sick pay days counted so far: '+used+' of '+(SSP_WEEKS*5)+' (28 weeks).':''}
   $('s-ssp-from').addEventListener('input',showSspEnd);$('s-ssp-from').addEventListener('change',showSspEnd);
   $('s-salary').addEventListener('input',showRate); $('s-contract').addEventListener('input',showRate);
   function openSettings(){
