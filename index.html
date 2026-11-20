@@ -171,6 +171,15 @@
   </form>
 </dialog>
 
+<dialog id="dlg-update" aria-labelledby="dlg-update-title">
+  <form class="sheet" id="update-form" novalidate>
+    <div class="sheet-head"><h2 id="dlg-update-title">Update your settings</h2><button class="ghost" type="button" data-close>Close</button></div>
+    <p>These changes came from your update link. Check them, then tap Apply.</p>
+    <div class="rows" id="update-rows"></div>
+    <div class="actions"><button class="primary" type="submit" id="update-apply">Apply</button></div>
+  </form>
+</dialog>
+
 <dialog id="dlg-settings" aria-labelledby="dlg-settings-title">
   <form class="sheet" id="set-form" novalidate>
     <div class="sheet-head"><h2 id="dlg-settings-title">Settings</h2><button class="ghost" type="button" data-close>Close</button></div>
@@ -238,6 +247,6 @@
 </dialog>
 <script src="config.js?v=1"></script>
 <script src="calc.js?v=7"></script>
-<script type="module" src="app.js?v=13"></script>
+<script type="module" src="app.js?v=14"></script>
 </body>
 </html>

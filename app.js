@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=15, APP_DATE='21 November 2026';
+const APP_VERSION=16, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -366,6 +366,51 @@ const APP_VERSION=15, APP_DATE='21 November 2026';
   }
   window.addEventListener('hashchange',readOutLink);
 
+  /* a link ending #update=<base64url JSON {settings..., outgoings:[...]}> shows each change for checking, then Apply */
+  const UPD={salary:['Full-time salary','money'],contractHours:['Contracted hours a week','num'],target:['Weekly aim (hours)','num'],
+    maTaxCode:['MA Group tax code','code'],pensionPct:['Workplace pension %','num'],ytdDate:['Payslip pay date','date'],ytdTaxable:['Taxable pay to date','money'],
+    ytdTax:['Tax paid to date','money'],mpGross:['Pension a year','money'],mpCode:['Pension tax code','code'],mpActual:['Pension that arrives each month','money'],
+    mpDay:['Pension paid on day','num'],mpTaxYtd:['Pension tax paid so far','money'],pipWeekly:['PIP each week','money'],pipDay:['PIP paid on','weekday'],
+    sspDaily:['Sick pay a day','money'],sspFrom:['Sick pay started on','date'],salaryEstimated:['Salary marked as estimated','bool']};
+  const WD=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  function showVal(k,v){const t=UPD[k][1];if(v===null||v===undefined||v==='')return 'not set';
+    if(t==='money')return money(Number(v));if(t==='date')return isYmd(v)?dYear(v):String(v);if(t==='weekday')return WD[v]||String(v);if(t==='bool')return v?'Yes':'No';return String(v)}
+  function cleanUpd(k,v){const t=UPD[k][1];
+    if(t==='money'||t==='num'){const n=Number(v);return isFinite(n)&&n>=0&&n<10000000?n:undefined}
+    if(t==='code')return typeof v==='string'&&parseCode(v)?v.trim().toUpperCase():undefined;
+    if(t==='date')return isYmd(v)?v:undefined; if(t==='weekday'){const n=Number(v);return n>=0&&n<=6?n:undefined}
+    if(t==='bool')return !!v; return undefined}
+  function readUpdateLink(){
+    const m=/^#update=([A-Za-z0-9_-]+)$/.exec(location.hash||''); if(!m)return;
+    try{S.pendingUpdate=JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')),ch=>ch.charCodeAt(0))))}catch(e){S.pendingUpdate=null}
+    try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+    applyUpdateLink();
+  }
+  function applyUpdateLink(){
+    const u=S.pendingUpdate; if(!u||typeof u!=='object'||!S.db||!S.got.cfg||!S.canWrite)return;
+    S.pendingUpdate=null;
+    const changes={}, rows=[];
+    Object.keys(UPD).forEach(k=>{if(!(k in u))return;const v=cleanUpd(k,u[k]);if(v===undefined)return;if(String(S.cfg[k])===String(v))return;
+      changes[k]=v;rows.push('<div class="row"><span class="rl">'+esc(UPD[k][0])+'</span><span class="rv num">'+esc(showVal(k,v))+'</span><span class="rs">Was '+esc(showVal(k,S.cfg[k]))+'</span></div>')});
+    if(Array.isArray(u.outgoings)){
+      const merged=(Array.isArray(S.cfg.outgoings)?S.cfg.outgoings:[]).map(x=>({name:x.name,amount:Number(x.amount)}));
+      u.outgoings.filter(o=>o&&typeof o.name==='string'&&Number(o.amount)>0).slice(0,30).forEach(o=>{const n={name:o.name.slice(0,40),amount:Number(o.amount)};const i=merged.findIndex(x=>x.name.trim().toLowerCase()===n.name.trim().toLowerCase());if(i>=0)merged[i]=n;else merged.push(n)});
+      changes.outgoings=merged;
+      rows.push('<div class="row"><span class="rl">Monthly outgoings</span><span class="rv num">'+esc(money(merged.reduce((t,o)=>t+o.amount,0)))+'</span><span class="rs">'+esc(merged.map(o=>o.name+' '+money(o.amount)).join(', '))+'</span></div>');
+    }
+    if(!rows.length){toast('Your settings already match the link');return}
+    S.updateChanges=changes;
+    document.querySelectorAll('dialog[open]').forEach(d=>d.close());
+    $('update-rows').innerHTML=rows.join(''); $('dlg-update').showModal();
+  }
+  $('update-form').addEventListener('submit',async ev=>{
+    ev.preventDefault(); if(!S.db||!S.updateChanges)return;
+    const btn=$('update-apply'); btn.disabled=true;
+    try{await S.db.doc('config/main').set(Object.assign({},S.cfg,S.updateChanges));S.updateChanges=null;$('dlg-update').close();toast('Settings updated')}catch(e){writeFailed(e)}
+    btn.disabled=false;
+  });
+  window.addEventListener('hashchange',readUpdateLink);
+
   $('out-edit').addEventListener('click',()=>{
     const o=(Array.isArray(S.cfg.outgoings)?S.cfg.outgoings:[]).map(x=>({name:x.name||'',amount:x.amount!=null?String(x.amount):''}));
     drawOuts(o.length?o:[{name:'',amount:''}]); $('dlg-out').showModal();
@@ -485,7 +530,7 @@ const APP_VERSION=15, APP_DATE='21 November 2026';
     unsubs.push(db.doc('config/main').onSnapshot(snap=>{
       if(snap.exists){S.cfg=Object.assign({},DEFAULTS,snap.data());S.hasCfg=true}
       if(!snap.metadata.fromCache||snap.exists)S.got.cfg=true;
-      if(snap.exists)setTimeout(applyOutLink,0);
+      if(snap.exists)setTimeout(()=>{applyOutLink();applyUpdateLink()},0);
       if(!snap.exists&&!snap.metadata.fromCache&&!S.setupShown){S.setupShown=true;const d=$('dlg-setup');if(!d.open)d.showModal()}
       settle();
     },fail));
@@ -560,6 +605,7 @@ const APP_VERSION=15, APP_DATE='21 November 2026';
 
   function start(){
     readOutLink();
+    readUpdateLink();
     $('app-version').textContent='Version '+APP_VERSION+'.';
     checkVersion();
     render();
