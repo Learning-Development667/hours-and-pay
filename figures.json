@@ -1,13 +1,13 @@
 {
-  "stamp": "2026-11-21a",
-  "note": "October payroll, HMRC records and your outgoings",
+  "stamp": "2026-11-21b",
+  "note": "your payslips, January to October 2026",
   "settings": {
     "salary": 60400,
     "contractHours": 37.5,
     "target": 15,
     "maTaxCode": "344L M1",
-    "pensionPct": 2,
-    "ytdDate": "2026-10-23",
+    "pensionPct": 4,
+    "ytdDate": "2026-10-25",
     "ytdTaxable": 31132.87,
     "ytdTax": 6303.84,
     "mpGross": 16500.48,
