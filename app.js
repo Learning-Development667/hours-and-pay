@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=12, APP_DATE='21 November 2026';
+const APP_VERSION=13, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -314,6 +314,27 @@ const APP_VERSION=12, APP_DATE='21 November 2026';
       '<button class="icon-btn" type="button" data-remove-out="'+i+'" aria-label="Remove '+esc(r.name||'this outgoing')+'">'+X2+'</button></div>').join('');
     $('out-add').hidden=rows.length>=30;
   }
+  /* a link ending #outgoings=<base64url JSON list> opens this sheet filled in, for checking before Save */
+  function readOutLink(){
+    const m=/^#outgoings=([A-Za-z0-9_-]+)$/.exec(location.hash||''); if(!m)return;
+    try{
+      const txt=new TextDecoder().decode(Uint8Array.from(atob(m[1].replace(/-/g,'+').replace(/_/g,'/')),ch=>ch.charCodeAt(0)));
+      const list=JSON.parse(txt);
+      if(Array.isArray(list))S.pendingOuts=list.filter(o=>o&&typeof o.name==='string'&&Number(o.amount)>0).slice(0,30).map(o=>({name:o.name.slice(0,40),amount:String(Number(o.amount))}));
+    }catch(e){}
+    try{history.replaceState(null,'',location.pathname+location.search)}catch(e){}
+    applyOutLink();
+  }
+  function applyOutLink(){
+    if(!S.pendingOuts||!S.db||!S.got.cfg||!S.canWrite)return;
+    const merged=(Array.isArray(S.cfg.outgoings)?S.cfg.outgoings:[]).map(x=>({name:x.name||'',amount:String(x.amount)}));
+    for(const n of S.pendingOuts){const i=merged.findIndex(x=>x.name.trim().toLowerCase()===n.name.trim().toLowerCase());if(i>=0)merged[i]=n;else merged.push(n)}
+    S.pendingOuts=null;
+    document.querySelectorAll('dialog[open]').forEach(d=>d.close());
+    drawOuts(merged); $('dlg-out').showModal(); toast('Check the list, then tap Save');
+  }
+  window.addEventListener('hashchange',readOutLink);
+
   $('out-edit').addEventListener('click',()=>{
     const o=(Array.isArray(S.cfg.outgoings)?S.cfg.outgoings:[]).map(x=>({name:x.name||'',amount:x.amount!=null?String(x.amount):''}));
     drawOuts(o.length?o:[{name:'',amount:''}]); $('dlg-out').showModal();
@@ -433,6 +454,7 @@ const APP_VERSION=12, APP_DATE='21 November 2026';
     unsubs.push(db.doc('config/main').onSnapshot(snap=>{
       if(snap.exists){S.cfg=Object.assign({},DEFAULTS,snap.data());S.hasCfg=true}
       if(!snap.metadata.fromCache||snap.exists)S.got.cfg=true;
+      if(snap.exists)setTimeout(applyOutLink,0);
       if(!snap.exists&&!snap.metadata.fromCache&&!S.setupShown){S.setupShown=true;const d=$('dlg-setup');if(!d.open)d.showModal()}
       settle();
     },fail));
@@ -506,6 +528,7 @@ const APP_VERSION=12, APP_DATE='21 November 2026';
   setInterval(checkVersion,10*60*1000);
 
   function start(){
+    readOutLink();
     $('app-version').textContent='Version '+APP_VERSION+'.';
     checkVersion();
     render();
