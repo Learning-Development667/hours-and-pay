@@ -269,3 +269,13 @@ dialog::backdrop{background:var(--shade)}
 .sheet-head{position:sticky;top:0;z-index:3;background:var(--surface);margin:-22px -20px 0;padding:14px 20px 12px;border-bottom:1px solid var(--line)}
 .field input[type="date"]{-webkit-appearance:none;appearance:none;min-width:0;max-width:100%;display:block;text-align:left}
 .field input[type="date"]::-webkit-date-and-time-value{text-align:left}
+
+/* 21 November 2026: holiday days */
+:root{--hol-bg:rgba(92,195,201,.16);--hol-fg:#7FD3D8}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--hol-bg:rgba(24,114,122,.12);--hol-fg:#135E65}}
+:root[data-theme="light"]{--hol-bg:rgba(24,114,122,.12);--hol-fg:#135E65}
+.cal-day.hol{background:var(--hol-bg);border-color:var(--hol-fg)}
+.cd-h.holl{color:var(--hol-fg)}
+.cal-hol{margin:-8px 0 12px}
+.holtoggle{display:flex;align-items:center;gap:12px;min-height:48px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--raised);font-size:16px;cursor:pointer}
+.holtoggle input{width:24px;height:24px;accent-color:var(--gold-fill);flex:none}

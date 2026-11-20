@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=17, APP_DATE='21 November 2026';
+const APP_VERSION=18, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -39,7 +39,8 @@ const APP_VERSION=17, APP_DATE='21 November 2026';
   function dayMap(){
     const m=new Map();
     for(const e of S.entries){
-      let d=m.get(e.date); if(!d){d={date:e.date,mins:0,shifts:[],notes:[],ids:[]};m.set(e.date,d)}
+      let d=m.get(e.date); if(!d){d={date:e.date,mins:0,shifts:[],notes:[],ids:[],holiday:false};m.set(e.date,d)}
+      if(e.holiday)d.holiday=true;
       d.mins+=e.mins; d.ids.push(e.id); if(e.note)d.notes.push(e.note); d.shifts.push(...e.shifts);
     }
     for(const d of m.values())d.shifts.sort((x,y)=>timeMins(x.start)-timeMins(y.start));
@@ -49,7 +50,7 @@ const APP_VERSION=17, APP_DATE='21 November 2026';
   function todayYmd(){const d=new Date();return ymd(d.getFullYear(),d.getMonth(),d.getDate())}
 
   const DEFAULTS={salary:0,contractHours:37.5,salaryEstimated:false,target:0,maTaxCode:'1257L',pensionPct:0,
-    ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:0,mpCode:'BR',mpActual:null,pipWeekly:0,pipDay:2,mpDay:22,sspDaily:0,sspFrom:'',mpTaxYtd:null,outgoings:[],people:[]};
+    ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:0,mpCode:'BR',mpActual:null,pipWeekly:0,pipDay:2,mpDay:22,sspDaily:0,sspFrom:'',mpTaxYtd:null,outgoings:[],holidayLeft:null,holidayAsOf:'',people:[]};
   const S={entries:[],cfg:Object.assign({},DEFAULTS),hasCfg:false,got:{hours:false,cfg:false},status:'loading',
     view:null,canWrite:true,db:null,day:null,ledger:null};
 
@@ -91,8 +92,8 @@ const APP_VERSION=17, APP_DATE='21 November 2026';
     $('hero-eyebrow').textContent=isCur?'Take-home so far this cycle':'Take-home for this cycle';
     $('hero-amount').textContent=money(cyc.net);
     $('hero-sub').textContent=!ready?'Loading your hours.':
-      (cyc.mins?fmtH(cyc.mins)+' at '+money(L.rate)+' an hour. ':'No hours logged yet. ')+(cyc.sspDays?'Sick pay for '+cyc.sspDays+(cyc.sspDays===1?' day. ':' days. '):'')+'Paid around '+dLong(workingDayOnOrBefore(cyc.pay))+'.';
-    let split=(cyc.ssp>0?stat('Hours',money(cyc.hoursPay))+stat('Sick pay',money(cyc.ssp)):'')+stat('Before tax',money(cyc.gross))+
+      (cyc.mins?fmtH(cyc.mins)+' at '+money(L.rate)+' an hour. ':'No hours logged yet. ')+(cyc.sspDays?'Sick pay for '+cyc.sspDays+(cyc.sspDays===1?' day. ':' days. '):'')+(cyc.holDays?'Holiday pay for '+cyc.holDays+(cyc.holDays===1?' day. ':' days. '):'')+'Paid around '+dLong(workingDayOnOrBefore(cyc.pay))+'.';
+    let split=(cyc.ssp>0||cyc.holPay>0?stat('Hours',money(cyc.hoursPay))+(cyc.ssp>0?stat('Sick pay',money(cyc.ssp)):'')+(cyc.holPay>0?stat('Holiday pay',money(cyc.holPay)):''):'')+stat('Before tax',money(cyc.gross))+
       (cyc.tax<0?stat('Tax refund',money(-cyc.tax)):stat('Income tax',money(cyc.tax)))+
       stat('National Insurance',money(cyc.ni));
     if(cyc.pens>0)split+=stat('Workplace pension',money(cyc.pens));
@@ -219,19 +220,23 @@ const APP_VERSION=17, APP_DATE='21 November 2026';
     let cal='';
     for(let i=(weekday(cyc.start)+6)%7;i>0;i--)cal+='<span class="cal-pad" aria-hidden="true"></span>';
     for(let d=cyc.start;d<=cyc.end;d=addDays(d,1)){
-      const x=dm.get(d), mins=x?x.mins:0, p=parts(d), mon=d===cyc.start||p.d===1, sick=!mins&&L.sspSet.has(d);
-      const cls='cal-day'+(mins?' has':'')+(d===today?' today':'')+(d>today?' future':'');
-      const label=dFull(d)+(d===today?', today':'')+(mins?', '+fmtH(mins)+' worked':sick?', sick pay':', no hours');
-      cal+='<button type="button" class="'+cls+'" data-day="'+d+'" aria-label="'+esc(label)+'"><small>'+(mon?esc(monShort(d)):'')+'</small><span class="cd-n">'+p.d+'</span><span class="cd-h'+(sick?' sick':'')+'">'+(mins?esc(fmtCompact(mins)):sick?'SSP':'')+'</span></button>';
+      const x=dm.get(d), mins=x?x.mins:0, p=parts(d), mon=d===cyc.start||p.d===1, sick=!mins&&L.sspSet.has(d), hol=!!(x&&x.holiday);
+      const cls='cal-day'+(hol?' hol':'')+(mins?' has':'')+(d===today?' today':'')+(d>today?' future':'');
+      const label=dFull(d)+(d===today?', today':'')+(hol?', holiday':mins?', '+fmtH(mins)+' worked':sick?', sick pay':', no hours');
+      cal+='<button type="button" class="'+cls+'" data-day="'+d+'" aria-label="'+esc(label)+'"><small>'+(mon?esc(monShort(d)):'')+'</small><span class="cd-n">'+p.d+'</span><span class="cd-h'+(sick?' sick':'')+(hol?' holl':'')+'">'+(hol?'Hol':mins?esc(fmtCompact(mins)):sick?'SSP':'')+'</span></button>';
     }
     $('cal').innerHTML=cal;
     $('cal-sum').textContent=fmtH(cyc.mins)+(isCur?' so far':'');
     $('cal-hint').hidden=!S.canWrite;
+    const hl=S.cfg.holidayLeft, hasLeft=hl!==null&&hl!==undefined&&hl!==''&&isFinite(Number(hl));
+    const booked=S.entries.filter(e=>e.holiday&&(!isYmd(S.cfg.holidayAsOf)||e.date>=S.cfg.holidayAsOf)).length;
+    $('cal-hol').textContent=hasLeft?'Holiday: '+booked+' day'+(booked===1?'':'s')+' marked, '+Math.max(0,Number(hl)-booked)+' left of '+Number(hl)+'. Paid at '+money(L.dayRate)+' a day.':(booked?booked+' holiday day'+(booked===1?'':'s')+' marked, paid at '+money(L.dayRate)+' a day.':'');
+    $('cal-hol').hidden=!$('cal-hol').textContent;
     const days=[...dm.values()].filter(x=>x.date>=cyc.start&&x.date<=cyc.end).sort((x,y)=>x.date<y.date?1:-1);
     $('entries-sum').textContent=days.length?fmtH(cyc.mins)+' over '+days.length+(days.length===1?' day':' days'):'';
     $('entries').innerHTML=days.length?days.map(x=>{
       const sub=[x.shifts.length?shiftText(x.shifts):'',...x.notes].filter(Boolean).join('. ');
-      const inner='<span class="rl">'+esc(dLong(x.date))+'</span><span class="rv num">'+esc(fmtH(x.mins))+'</span>'+(sub?'<span class="rs">'+esc(sub)+'</span>':'');
+      const inner='<span class="rl">'+esc(dLong(x.date))+'</span><span class="rv num">'+esc(x.holiday?'Holiday':fmtH(x.mins))+'</span>'+(sub?'<span class="rs">'+esc(sub)+'</span>':'');
       return S.canWrite?'<button type="button" class="row" data-day="'+x.date+'" aria-label="'+esc('Change '+dFull(x.date)+', '+fmtH(x.mins))+'">'+inner+'</button>':'<div class="row">'+inner+'</div>';
     }).join(''):'<p class="empty">'+(ready?(isCur?'No hours logged in this cycle yet.'+(S.canWrite?' Tap a day on the calendar to add them.':''):'No hours were logged in this cycle.'):'Loading.')+'</p>';
 
@@ -291,16 +296,29 @@ const APP_VERSION=17, APP_DATE='21 November 2026';
     const x=dayMap().get(date);
     S.day={date:date,ids:x?x.ids:[]};
     $('dlg-day-title').textContent=dFull(date);
-    const untimed=x&&!x.shifts.length;
+    $('d-hol').checked=!!(x&&x.holiday); $('d-hol-rate').textContent='('+money(dayRate(S.cfg))+')';
+    const untimed=x&&!x.shifts.length&&!x.holiday;
     $('day-legacy').textContent=untimed?'This day has '+fmtH(x.mins)+' logged without times. Saving shifts replaces it.':'';
     $('day-legacy').hidden=!untimed;
     $('d-note').value=x?x.notes.join('. ').slice(0,140):'';
     drawShifts(x&&x.shifts.length?x.shifts.map(s=>({start:s.start,end:s.end})):[{start:'',end:''}]);
     const clr=$('d-clear'); clr.hidden=!x; clr.textContent='Clear day'; clr.dataset.armed='';
+    syncHol();
     $('dlg-day').showModal();
   }
+  function syncHol(){const on=$('d-hol').checked;$('shifts').hidden=on;$('add-shift').hidden=on||document.querySelectorAll('#shifts .shift').length>=6;if(on)$('day-total').textContent='Holiday';else showDayTotal()}
+  $('d-hol').addEventListener('change',syncHol);
   $('day-form').addEventListener('submit',async ev=>{
     ev.preventDefault(); const day=S.day; if(!day||!S.db)return;
+    if($('d-hol').checked){
+      const note=$('d-note').value.trim().slice(0,140), btn=$('d-save'); btn.disabled=true;
+      try{
+        await S.db.collection('hours').doc(day.date).set({date:day.date,mins:0,shifts:[],holiday:true,note:note,at:Date.now()});
+        for(const id of day.ids)if(id!==day.date)await S.db.collection('hours').doc(id).delete();
+        $('dlg-day').close(); S.view=cycleOf(day.date).start; render(); toast('Holiday marked for '+dLong(day.date));
+      }catch(e){writeFailed(e)}
+      btn.disabled=false; return;
+    }
     const rowsEl=[...document.querySelectorAll('#shifts .shift')]; let firstBad=null; const good=[];
     const bad=(el,msg)=>{markBad(el,msg);if(!firstBad)firstBad=el};
     rowsEl.forEach(r=>{
@@ -371,7 +389,7 @@ const APP_VERSION=17, APP_DATE='21 November 2026';
     maTaxCode:['MA Group tax code','code'],pensionPct:['Workplace pension %','num'],ytdDate:['Payslip pay date','date'],ytdTaxable:['Taxable pay to date','money'],
     ytdTax:['Tax paid to date','money'],mpGross:['Pension a year','money'],mpCode:['Pension tax code','code'],mpActual:['Pension that arrives each month','money'],
     mpDay:['Pension paid on day','num'],mpTaxYtd:['Pension tax paid so far','money'],pipWeekly:['PIP each week','money'],pipDay:['PIP paid on','weekday'],
-    sspDaily:['Sick pay a day','money'],sspFrom:['Sick pay started on','date'],salaryEstimated:['Salary marked as estimated','bool']};
+    sspDaily:['Sick pay a day','money'],holidayLeft:['Holiday days left','num'],holidayAsOf:['Holiday left counted from','date'],sspFrom:['Sick pay started on','date'],salaryEstimated:['Salary marked as estimated','bool']};
   const WD=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   function showVal(k,v){const t=UPD[k][1];if(v===null||v===undefined||v==='')return 'not set';
     if(t==='money')return money(Number(v));if(t==='date')return isYmd(v)?dYear(v):String(v);if(t==='weekday')return WD[v]||String(v);if(t==='bool')return v?'Yes':'No';return String(v)}
@@ -458,6 +476,7 @@ const APP_VERSION=17, APP_DATE='21 November 2026';
   function showRate(){
     const s=parseMoney($('s-salary').value), h=parseMoney($('s-contract').value);
     $('s-rate').textContent=s>0&&h>0?money(s/52/h)+' an hour':'not set';
+    $('s-hol-rate').textContent=s>0?'Holiday pay: '+money(Math.round(s/260*100)/100)+' a day (salary divided by 260 working days).':'';
   }
   function showSspEnd(){const used=S.ledger?S.ledger.sspSet.size:0;$('s-ssp-end').textContent=isYmd($('s-ssp-from').value)?'Sick pay days counted so far: '+used+' of '+(SSP_WEEKS*5)+' (28 weeks).':''}
   $('s-ssp-from').addEventListener('input',showSspEnd);$('s-ssp-from').addEventListener('change',showSspEnd);
@@ -478,6 +497,7 @@ const APP_VERSION=17, APP_DATE='21 November 2026';
     $('s-ssp-from').value=isYmd(c.sspFrom)?c.sspFrom:'';
     showSspEnd();
     $('s-mp-day').value=String(c.mpDay==null?22:c.mpDay);
+    $('s-hol-left').value=c.holidayLeft==null?'':numBox(c.holidayLeft);
     $('s-mp-taxytd').value=c.mpTaxYtd==null?'':numBox(c.mpTaxYtd);
     $('s-mp-actual').value=c.mpActual?numBox(c.mpActual):'';
     $('s-pip').value=c.pipWeekly?numBox(c.pipWeekly):'';
@@ -516,6 +536,7 @@ const APP_VERSION=17, APP_DATE='21 November 2026';
       if(next.sspDaily>200)bad(sdEl,'Check this: the amount for one day');}
     const mdEl=$('s-mp-day'), md=Number(mdEl.value.trim());
     if(!/^\d{1,2}$/.test(mdEl.value.trim())||md<1||md>28)bad(mdEl,mdEl.value.trim()?'Check this: a day from 1 to 28':'Missing information'); else next.mpDay=md;
+    const hlv=opt('s-hol-left'); if(hlv!==undefined){if(hlv!==S.cfg.holidayLeft)next.holidayAsOf=todayYmd();next.holidayLeft=hlv}
     const mty=opt('s-mp-taxytd'); if(mty!==undefined)next.mpTaxYtd=mty;
     const act=opt('s-mp-actual'); next.mpActual=act===undefined?null:act;
     next.pipWeekly=need('s-pip',100000); next.pipDay=Number($('s-pip-day').value);
@@ -529,10 +550,10 @@ const APP_VERSION=17, APP_DATE='21 November 2026';
   /* ---------- data ---------- */
   function cleanEntry(id,d){
     if(!d||!isYmd(d.date))return null;
-    const mins=Math.round(Number(d.mins));
-    if(!(mins>0)||mins>1440)return null;
+    const hol=d.holiday===true, mins=hol?0:Math.round(Number(d.mins));
+    if(!hol&&(!(mins>0)||mins>1440))return null;
     const shifts=Array.isArray(d.shifts)?d.shifts.filter(s=>s&&timeMins(s.start)!==null&&timeMins(s.end)!==null&&timeMins(s.end)>timeMins(s.start)).slice(0,10).map(s=>({start:s.start,end:s.end})):[];
-    return {id:id,date:d.date,mins:mins,shifts:shifts,note:typeof d.note==='string'?d.note.slice(0,140):'',at:Number(d.at)||0};
+    return {id:id,date:d.date,mins:mins,holiday:hol,shifts:hol?[]:shifts,note:typeof d.note==='string'?d.note.slice(0,140):'',at:Number(d.at)||0};
   }
   /* ---------- sign-in and live data ---------- */
   let auth=null, store=null, unsubs=[], slow=null;

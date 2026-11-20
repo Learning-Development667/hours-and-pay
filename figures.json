@@ -1,6 +1,6 @@
 {
-  "stamp": "2026-11-21b",
-  "note": "your payslips, January to October 2026",
+  "stamp": "2026-11-21c",
+  "note": "10 holiday days left",
   "settings": {
     "salary": 60400,
     "contractHours": 37.5,
@@ -19,7 +19,9 @@
     "pipDay": 2,
     "sspDaily": 24.65,
     "sspFrom": "2026-10-01",
-    "salaryEstimated": false
+    "salaryEstimated": false,
+    "holidayLeft": 10,
+    "holidayAsOf": "2026-11-21"
   },
   "outgoings": [
     {

@@ -61,24 +61,26 @@ function hourlyRate(cfg){return cfg.salary>0&&cfg.contractHours>0?round2(cfg.sal
    (weekends count towards the four), from the start date, for at most 28 weeks of 5 days.
    A day with any hours is not a sick day. Only days already passed are counted. */
 var SSP_WEEKS=28;
-function sspDaySet(cfg,today,worked){
+/* Holiday pay: a full day at the contracted rate (salary / 52 weeks / 5 days), as MA Group's payroll uses. */
+function dayRate(cfg){return cfg.salary>0?round2(cfg.salary/260):0}
+function sspDaySet(cfg,today,worked,hol){
   const set=new Set();
   if(!(cfg.sspDaily>0)||!isYmd(cfg.sspFrom))return set;
   const cap=SSP_WEEKS*5; let run=[];
-  const flush=()=>{if(run.length>=4)for(const d of run){const wd=weekday(d);if(wd>=1&&wd<=5&&set.size<cap)set.add(d)}run=[]};
+  const flush=()=>{if(run.length>=4)for(const d of run){const wd=weekday(d);if(wd>=1&&wd<=5&&!(hol&&hol.has(d))&&set.size<cap)set.add(d)}run=[]};
   for(let d=cfg.sspFrom;d<=today;d=addDays(d,1)){if(worked.has(d))flush();else run.push(d)}
   flush();
   return set;
 }
 /* The workplace pension is taken after tax (relief at source), so it does not lower taxable pay. */
-function payFor(mins,rate,cfg,code,base,month,ssp){
-  ssp=ssp||0;
-  const hoursPay=round2(mins/60*rate), gross=round2(hoursPay+ssp), pens=round2(gross*(cfg.pensionPct||0)/100), taxable=gross;
+function payFor(mins,rate,cfg,code,base,month,ssp,hol){
+  ssp=ssp||0; hol=hol||0;
+  const hoursPay=round2(mins/60*rate), gross=round2(hoursPay+ssp+hol), pens=round2(gross*(cfg.pensionPct||0)/100), taxable=gross;
   let tax,basis,cumAfter=0,paidAfter=0;
   if(base){cumAfter=base.cum+taxable;paidAfter=taxDue(cumAfter,month,code);tax=round2(paidAfter-base.paid);basis='year'}
   else{tax=taxDue(taxable,1,code);basis=code&&code.kind==='flat'?'flat':'month'}
   const ni=niDue(gross);
-  return {mins:mins,hoursPay:hoursPay,ssp:ssp,gross:gross,pens:pens,tax:tax,ni:ni,net:round2(gross-pens-tax-ni),basis:basis,cumAfter:cumAfter,paidAfter:paidAfter};
+  return {mins:mins,hoursPay:hoursPay,ssp:ssp,holPay:hol,gross:gross,pens:pens,tax:tax,ni:ni,net:round2(gross-pens-tax-ni),basis:basis,cumAfter:cumAfter,paidAfter:paidAfter};
 }
 function pensionNet(cfg){
   if(cfg.mpActual>0)return {net:round2(cfg.mpActual),actual:true};
@@ -89,10 +91,11 @@ function countWeekday(start,end,wd){let n=0;for(let d=start;d<=end;d=addDays(d,1
 
 function buildLedger(entries,cfg,today){
   const rate=hourlyRate(cfg), code=parseCode(cfg.maTaxCode), cur=cycleOf(today);
-  const byCycle=new Map(), worked=new Set(); let first=cur.start,last=cur.start;
+  const byCycle=new Map(), worked=new Set(), holSet=new Set(); let first=cur.start,last=cur.start;
   if(cfg.sspDaily>0&&isYmd(cfg.sspFrom)&&cfg.sspFrom<=today){const k=cycleOf(cfg.sspFrom).start;if(k<first)first=k}
   for(const e of entries){
     if(e.mins>0)worked.add(e.date);
+    if(e.holiday)holSet.add(e.date);
     const k=cycleOf(e.date).start;
     byCycle.set(k,(byCycle.get(k)||0)+e.mins);
     if(k<first)first=k; if(k>last)last=k;
@@ -100,7 +103,7 @@ function buildLedger(entries,cfg,today){
   let anchor=null;
   if(isYmd(cfg.ytdDate)&&cfg.ytdTaxable>=0&&cfg.ytdTax>=0&&cfg.ytdTaxable!==null&&cfg.ytdTax!==null)
     anchor={payDate:cfg.ytdDate,cum:cfg.ytdTaxable,paid:cfg.ytdTax,ty:taxYearOf(cfg.ytdDate),m:taxMonthOf(cfg.ytdDate)};
-  const pn=pensionNet(cfg), target=cfg.target||0, sspSet=sspDaySet(cfg,today,worked);
+  const pn=pensionNet(cfg), target=cfg.target||0, sspSet=sspDaySet(cfg,today,worked,holSet), dr=dayRate(cfg);
   const cycles=[]; let chain=null, stale=false;
   for(let c=cycleOf(first);c.start<=last;c=cycleOf(addDays(c.end,1))){
     const mins=byCycle.get(c.start)||0, ty=taxYearOf(c.pay), m=taxMonthOf(c.pay);
@@ -117,12 +120,14 @@ function buildLedger(entries,cfg,today){
     let sspDays=0;
     for(let d=c.start;d<=c.end;d=addDays(d,1))if(sspSet.has(d))sspDays++;
     const ssp=round2(sspDays*(cfg.sspDaily||0));
-    const pay=payFor(mins,rate,cfg,code,base,m,ssp);
-    const row=Object.assign({start:c.start,end:c.end,pay:c.pay,ty:ty,sspDays:sspDays},pay);
+    let holPast=0, holAll=0, holAhead=0;
+    for(let d=c.start;d<=c.end;d=addDays(d,1))if(holSet.has(d)){holAll++;if(d<=today)holPast++;else holAhead++}
+    const pay=payFor(mins,rate,cfg,code,base,m,ssp,round2(holPast*dr));
+    const row=Object.assign({start:c.start,end:c.end,pay:c.pay,ty:ty,sspDays:sspDays,holDays:holPast,holBooked:holAll},pay);
     if(c.start===cur.start&&target>0){
       const left=Math.max(0,daysBetween(today,c.end));
       row.daysLeft=left;
-      row.projected=payFor(Math.round(mins+target*60/7*left),rate,cfg,code,base,m,ssp);
+      row.projected=payFor(Math.round(mins+target*60/7*Math.max(0,left-holAhead)),rate,cfg,code,base,m,ssp,round2(holAll*dr));
     }
     if(base){chain.cum=pay.cumAfter;chain.paid=pay.paidAfter}
     row.pension=pn.net; row.pensionActual=pn.actual;
@@ -131,7 +136,7 @@ function buildLedger(entries,cfg,today){
     row.total=round2(row.net+row.pension+row.pip);
     cycles.push(row);
   }
-  return {cycles:cycles,current:cur,rate:rate,codeOk:!!code,stale:stale,worked:worked,sspSet:sspSet};
+  return {cycles:cycles,current:cur,rate:rate,codeOk:!!code,stale:stale,worked:worked,sspSet:sspSet,holSet:holSet,dayRate:dr};
 }
 function parseHours(str){
   const s=String(str||'').trim().toLowerCase().replace(',','.');
@@ -179,7 +184,8 @@ function yearForecast(entries,cfg,today){
   }
   for(let cy=cycleOf(addDays(L.current.end,1));cy.pay<=end;cy=cycleOf(addDays(cy.end,1))){
     if(taxMonthOf(cy.pay)<=fromMonth)continue;
-    const p=payFor(Math.round(target*60/7*(daysBetween(cy.start,cy.end)+1)),rate,cfg,code,null,taxMonthOf(cy.pay));
+    let hd=0; for(let d=cy.start;d<=cy.end;d=addDays(d,1))if(L.holSet.has(d))hd++;
+    const p=payFor(Math.round(target*60/7*Math.max(0,daysBetween(cy.start,cy.end)+1-hd)),rate,cfg,code,null,taxMonthOf(cy.pay),0,round2(hd*L.dayRate));
     add(cy.pay,p.gross,Math.max(0,p.tax));
   }
   const mpGross=round2(cfg.mpGross||0), monthly=mpGross/12, mpDay=Math.min(28,Math.max(1,Math.round(Number(cfg.mpDay))||22));
@@ -205,7 +211,8 @@ function runningTotal(entries,cfg,today,cyc,L){
   const days=[]; let bal=-outs, cross='', crossed=false, todayBal=null;
   for(let d=cyc.start;d<=cyc.end;d=addDays(d,1)){
     const past=d<=today; let gross=0;
-    if(past){gross+=(minsBy.get(d)||0)/60*L.rate; if(L.sspSet.has(d))gross+=cfg.sspDaily||0}
+    if(L.holSet.has(d))gross+=L.dayRate;
+    else if(past){gross+=(minsBy.get(d)||0)/60*L.rate; if(L.sspSet.has(d))gross+=cfg.sspDaily||0}
     else gross+=target*60/7/60*L.rate;
     let inc=gross*ratio;
     if(d===pDate)inc+=cyc.pension;
