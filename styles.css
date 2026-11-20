@@ -213,3 +213,18 @@ dialog::backdrop{background:var(--shade)}
 .day-total strong{font:600 24px/1.1 var(--display);color:var(--gold)}
 @media (max-width:380px){#cal-card{padding:16px 12px}.cal-dow,.cal{gap:3px}}
 .cd-h.sick{color:var(--muted);font-size:11px;letter-spacing:.04em}
+
+/* 21 November 2026: the tax year bar */
+:root{--seg-a:#D8BA72;--seg-b:rgba(216,186,114,.38);--seg-c:#7F93AB;--mark:#F3EFE6}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--seg-a:#B8913A;--seg-b:rgba(184,145,58,.32);--seg-c:#6E8096;--mark:#12202E}}
+:root[data-theme="light"]{--seg-a:#B8913A;--seg-b:rgba(184,145,58,.32);--seg-c:#6E8096;--mark:#12202E}
+.ybar-wrap{position:relative;padding:22px 0 26px;margin-top:2px}
+.ybar{display:flex;gap:2px;height:16px;border-radius:8px;background:var(--track);overflow:hidden}
+.ybar i{display:block;height:100%}
+.ys-a{background:var(--seg-a)}.ys-b{background:var(--seg-b)}.ys-c{background:var(--seg-c)}
+.ymarks b{position:absolute;top:18px;height:24px;width:2px;background:var(--mark);border-radius:1px}
+.ymarks b span{position:absolute;top:27px;left:-2px;white-space:nowrap;font-size:12px;font-weight:500;color:var(--muted)}
+.ymarks b.hi span{top:-20px;left:auto;right:-2px;color:var(--fg);font-weight:600}
+.ykey{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted);margin:2px 0 6px}
+.ykey span{display:inline-flex;align-items:center;gap:6px}
+.ykey i{display:inline-block;width:12px;height:12px;border-radius:3px}

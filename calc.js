@@ -159,3 +159,38 @@ function shiftMins(shifts){return (shifts||[]).reduce((a,s)=>{const x=timeMins(s
 /* A pay date that lands on a weekend or an England bank holiday is paid on the working day before. */
 var BANK_HOLIDAYS=['2026-12-25','2026-12-28','2027-01-01','2027-03-26','2027-03-29','2027-05-03','2027-05-31','2027-08-30','2027-12-27','2027-12-28'];
 function workingDayOnOrBefore(s){let d=s;while(weekday(d)===0||weekday(d)===6||BANK_HOLIDAYS.indexOf(d)>=0)d=addDays(d,-1);return d}
+
+/* ---- The tax year as a whole: forecast income against the bands, tax due against tax being taken ---- */
+var BANDS={allowance:12570,higher:50270};
+function annualTaxDue(income){
+  const t=Math.max(0,income-BANDS.allowance), basic=TAX.basicBand, top=TAX.higherLimit-BANDS.allowance;
+  return round2(.2*Math.min(t,basic)+.4*Math.max(0,Math.min(t,top)-basic)+.45*Math.max(0,t-top));
+}
+function yearForecast(entries,cfg,today){
+  const ty=taxYearOf(today), end=ymd(ty+1,3,5), L=buildLedger(entries,cfg,today), rate=L.rate, code=parseCode(cfg.maTaxCode), target=cfg.target||0;
+  const anchored=isYmd(cfg.ytdDate)&&taxYearOf(cfg.ytdDate)===ty&&cfg.ytdTaxable!=null&&cfg.ytdTax!=null;
+  const fromMonth=anchored?taxMonthOf(cfg.ytdDate):0;
+  let soFarPay=anchored?cfg.ytdTaxable:0, soFarTax=anchored?cfg.ytdTax:0, aheadPay=0, aheadTax=0;
+  const add=(pay,gross,tax)=>{if(workingDayOnOrBefore(pay)<=today){soFarPay+=gross;soFarTax+=tax}else{aheadPay+=gross;aheadTax+=tax}};
+  for(const cy of L.cycles){
+    if(taxYearOf(cy.pay)!==ty||taxMonthOf(cy.pay)<=fromMonth)continue;
+    const use=cy.start===L.current.start&&cy.projected?cy.projected:cy;
+    add(cy.pay,use.gross,Math.max(0,use.tax));
+  }
+  for(let cy=cycleOf(addDays(L.current.end,1));cy.pay<=end;cy=cycleOf(addDays(cy.end,1))){
+    if(taxMonthOf(cy.pay)<=fromMonth)continue;
+    const p=payFor(Math.round(target*60/7*(daysBetween(cy.start,cy.end)+1)),rate,cfg,code,null,taxMonthOf(cy.pay));
+    add(cy.pay,p.gross,Math.max(0,p.tax));
+  }
+  const mpGross=round2(cfg.mpGross||0), monthly=mpGross/12, mpDay=Math.min(28,Math.max(1,Math.round(Number(cfg.mpDay))||22));
+  let paidCount=0;
+  for(let i=0;i<12;i++){const d=ymd(ty,3+i,mpDay);if(workingDayOnOrBefore(d)<=today)paidCount++}
+  const monthTax=round2(monthly-pensionNet(cfg).net);
+  const mpTaxSoFar=cfg.mpTaxYtd>=0&&cfg.mpTaxYtd!==null&&cfg.mpTaxYtd!==undefined&&cfg.mpTaxYtd!==''?Number(cfg.mpTaxYtd):round2(paidCount*monthTax);
+  const mpTaxAhead=round2((12-paidCount)*monthTax);
+  const maPay=round2(soFarPay+aheadPay), income=round2(maPay+mpGross), due=annualTaxDue(income);
+  const taken=round2(soFarTax+aheadTax+mpTaxSoFar+mpTaxAhead);
+  return {ty:ty,anchored:anchored,maSoFar:round2(soFarPay),maAhead:round2(aheadPay),maPay:maPay,maTax:round2(soFarTax+aheadTax),
+    mpGross:mpGross,mpTax:round2(mpTaxSoFar+mpTaxAhead),mpTaxKnown:cfg.mpTaxYtd!=null&&cfg.mpTaxYtd!=='',income:income,due:due,taken:taken,diff:round2(taken-due),
+    overLine:round2(income-BANDS.higher)};
+}

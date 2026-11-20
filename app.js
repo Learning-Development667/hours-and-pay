@@ -46,7 +46,7 @@ function makeDb(fs){
   function todayYmd(){const d=new Date();return ymd(d.getFullYear(),d.getMonth(),d.getDate())}
 
   const DEFAULTS={salary:0,contractHours:37.5,salaryEstimated:false,target:0,maTaxCode:'1257L',pensionPct:0,
-    ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:0,mpCode:'BR',mpActual:null,pipWeekly:0,pipDay:2,mpDay:22,sspDaily:0,sspFrom:'',people:[]};
+    ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:0,mpCode:'BR',mpActual:null,pipWeekly:0,pipDay:2,mpDay:22,sspDaily:0,sspFrom:'',mpTaxYtd:null,people:[]};
   const S={entries:[],cfg:Object.assign({},DEFAULTS),hasCfg:false,got:{hours:false,cfg:false},status:'loading',
     view:null,canWrite:true,db:null,day:null,ledger:null};
 
@@ -131,6 +131,24 @@ function makeDb(fs){
       '<div class="row"><span class="rl">Military pension</span><span class="rv num">'+esc(money(cyc.pension))+'</span><span class="rs">'+esc((pDate?when(pDate)+'. ':'')+(cyc.pensionActual?'The monthly amount you entered':'Estimate after tax on code '+String(S.cfg.mpCode||'').toUpperCase()))+'</span></div>'+
       '<div class="row"><span class="rl">PIP</span><span class="rv num">'+esc(money(cyc.pip))+'</span><span class="rs">'+esc(cyc.pipCount+' '+pipDayName+(cyc.pipCount===1?'':'s')+' at '+money(S.cfg.pipWeekly||0)+(pipFirst?', '+dShort(pipFirst)+(pipLast!==pipFirst?' to '+dShort(pipLast):''):''))+'</span></div>'+
       '<div class="row total"><span class="rl">Total this cycle</span><span class="rv num">'+esc(money(cyc.total))+'</span></div>';
+
+    /* this tax year */
+    const Y=yearForecast(S.entries,S.cfg,today);
+    $('year-range').textContent=Y.ty+' to '+(Y.ty+1);
+    const scale=Math.max(Y.income,BANDS.higher)*1.1||1, pct=v=>(Math.max(0,v)/scale*100).toFixed(2)+'%';
+    $('ybar').innerHTML='<i class="ys-a" style="width:'+pct(Y.maSoFar)+'"></i><i class="ys-b" style="width:'+pct(Y.maAhead)+'"></i><i class="ys-c" style="width:'+pct(Y.mpGross)+'"></i>';
+    $('ybar').setAttribute('aria-label','Forecast income '+money(Y.income)+': MA Group '+money(Y.maSoFar)+' so far and '+money(Y.maAhead)+' still to come, pension '+money(Y.mpGross)+'. 40% tax starts at '+money(BANDS.higher)+'.');
+    $('ymarks').innerHTML='<b style="left:'+pct(BANDS.allowance)+'"><span>Tax-free to £12,570</span></b><b class="hi" style="left:'+pct(BANDS.higher)+'"><span>40% from £50,270</span></b>';
+    $('ykey').innerHTML='<span><i class="ys-a"></i>MA Group so far</span><span><i class="ys-b"></i>MA Group to come</span><span><i class="ys-c"></i>Army pension</span>';
+    const yr=(l,v,sub,cls)=>'<div class="row'+(cls?' '+cls:'')+'"><span class="rl">'+esc(l)+'</span><span class="rv num">'+esc(v)+'</span>'+(sub?'<span class="rs">'+esc(sub)+'</span>':'')+'</div>';
+    $('year-rows').innerHTML=
+      yr('Forecast income',money(Y.income),'MA Group '+money(Y.maPay)+' ('+money(Y.maSoFar)+' so far), pension '+money(Y.mpGross)+'. '+(Y.overLine>0?money(Y.overLine)+' over the 40% line.':money(-Y.overLine)+' under the 40% line.'))+
+      yr('Tax due on that',money(Y.due),'Before any allowances or deductions in your tax code')+
+      yr('Tax being taken',money(Y.taken),'MA Group '+money(Y.maTax)+', pension '+money(Y.mpTax))+
+      yr(Y.diff>=0?'Likely refund after April':'Likely to owe after April',money(Math.abs(Y.diff)),'',' total');
+    $('year-note').textContent=(Y.anchored?'':'Add your payslip\u2019s pay and tax to date in Settings to include the months before tracking began. ')+
+      (Y.mpTaxKnown?'':'Add the pension tax paid so far in Settings for a closer figure. ')+
+      'An estimate: it assumes your weekly aim from now until April, no more sick pay, and your current tax codes. Not tax advice.';
 
     /* weeks */
     $('weeks-aim').textContent=target>0?'Aim: '+target+' hours a week':'';
@@ -293,6 +311,7 @@ function makeDb(fs){
     $('s-ssp-from').value=isYmd(c.sspFrom)?c.sspFrom:'';
     showSspEnd();
     $('s-mp-day').value=String(c.mpDay==null?22:c.mpDay);
+    $('s-mp-taxytd').value=c.mpTaxYtd==null?'':numBox(c.mpTaxYtd);
     $('s-mp-actual').value=c.mpActual?numBox(c.mpActual):'';
     $('s-pip').value=c.pipWeekly?numBox(c.pipWeekly):'';
     $('s-pip-day').value=String(c.pipDay==null?2:c.pipDay);
@@ -329,6 +348,7 @@ function makeDb(fs){
       if(next.sspDaily>200)bad(sdEl,'Check this: the amount for one day');}
     const mdEl=$('s-mp-day'), md=Number(mdEl.value.trim());
     if(!/^\d{1,2}$/.test(mdEl.value.trim())||md<1||md>28)bad(mdEl,mdEl.value.trim()?'Check this: a day from 1 to 28':'Missing information'); else next.mpDay=md;
+    const mty=opt('s-mp-taxytd'); if(mty!==undefined)next.mpTaxYtd=mty;
     const act=opt('s-mp-actual'); next.mpActual=act===undefined?null:act;
     next.pipWeekly=need('s-pip',100000); next.pipDay=Number($('s-pip-day').value);
     if(firstBad){firstBad.focus();return}
