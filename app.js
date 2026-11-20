@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=13, APP_DATE='21 November 2026';
+const APP_VERSION=14, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -148,6 +148,37 @@ const APP_VERSION=13, APP_DATE='21 November 2026';
       '<div class="row total"><span class="rl">Left after outgoings</span><span class="rv num">'+esc(money(left))+'</span><span class="rs"><span class="pill '+(left>=0?'ok':'short')+'">'+(left>=0?'Covered':'Short by '+esc(money(-left)))+'</span> '+esc(isCur?'Against this cycle\u2019s income so far.':'Against this cycle\u2019s income.')+'</span></div>'
       :'<p class="empty">No outgoings yet. Choose Change to add the amounts that leave your account each month.</p>';
     $('out-edit').hidden=!S.canWrite;
+
+    /* running total: from minus the outgoings into the black */
+    const R=runningTotal(S.entries,S.cfg,today,cyc,L), rc=$('run-card');
+    rc.hidden=!(R.outs>0);
+    if(R.outs>0){
+      const inBlack=R.today>=0, amt=$('run-amount');
+      amt.textContent=(R.today<0?'\u2212':'+')+money(Math.abs(R.today));
+      amt.className='run-amount num '+(inBlack?'black':'red');
+      const pill=$('run-pill'); pill.textContent=inBlack?'In the black':'In the red'; pill.className='pill '+(inBlack?'ok':'short');
+      let sub=inBlack?(isCur?'Your outgoings are covered for this cycle.':'Outgoings were covered.'):money(-R.today)+' to go before your outgoings are covered.';
+      if(R.cross){sub+=' '+(R.cross<=today?'In the black since '+dLong(R.cross)+'.':'On course to be in the black on '+dLong(R.cross)+'.')}
+      else sub+=' On course to finish the cycle '+money(-R.end)+' short.';
+      $('run-sub').textContent=sub;
+      const W=600,H=150,P=10, vals=R.days.map(x=>x.bal).concat([R.start,0]), lo=Math.min(...vals), hi=Math.max(...vals), span=(hi-lo)||1;
+      const X=i=>P+i*(W-2*P)/Math.max(1,R.days.length), Y=v=>P+(hi-v)/span*(H-2*P), z=Y(0);
+      const pts=[[X(0),Y(R.start)]]; R.days.forEach((x,i)=>{pts.push([X(i+1),Y(i?R.days[i-1].bal:R.start)]);pts.push([X(i+1),Y(x.bal)])});
+      const lastPast=R.days.reduce((k,x,i)=>x.past?i:k,-1), cut=2*(lastPast+1)+1;
+      const pathOf=a=>a.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
+      const pastPts=pts.slice(0,Math.max(1,cut)), futPts=pts.slice(Math.max(0,cut-1));
+      const area=pathOf(pts)+' L'+X(R.days.length).toFixed(1)+' '+z.toFixed(1)+' L'+X(0).toFixed(1)+' '+z.toFixed(1)+' Z';
+      const tp=lastPast>=0?[X(lastPast+1),Y(R.days[lastPast].bal)]:null;
+      $('run-chart').innerHTML='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+esc('Running total from '+money(R.start)+' on '+dShort(cyc.start)+' to '+(R.today<0?'minus ':'')+money(Math.abs(R.today))+' today'+(R.cross?', crossing into the black on '+dShort(R.cross):'')+'. Forecast '+money(R.end)+' by '+dShort(cyc.end)+'.')+'">'+
+        '<clipPath id="rc-below"><rect x="0" y="'+z.toFixed(1)+'" width="'+W+'" height="'+H+'"/></clipPath><clipPath id="rc-above"><rect x="0" y="0" width="'+W+'" height="'+z.toFixed(1)+'"/></clipPath>'+
+        '<path d="'+area+'" fill="var(--run-red)" clip-path="url(#rc-below)"/><path d="'+area+'" fill="var(--run-black)" clip-path="url(#rc-above)"/>'+
+        '<line x1="'+P+'" x2="'+(W-P)+'" y1="'+z.toFixed(1)+'" y2="'+z.toFixed(1)+'" class="run-zero"/>'+
+        '<path d="'+pathOf(pastPts)+'" class="run-line"/>'+(futPts.length>1?'<path d="'+pathOf(futPts)+'" class="run-line fut"/>':'')+
+        (tp?'<circle cx="'+tp[0].toFixed(1)+'" cy="'+tp[1].toFixed(1)+'" r="6" class="run-dot"/>':'')+'</svg>';
+      $('run-start').textContent=money(R.start).replace('-','\u2212')+' on '+dShort(cyc.start);
+      $('run-end').textContent=(R.end<0?'\u2212':'+')+money(Math.abs(R.end))+' by '+dShort(cyc.end)+' (forecast)';
+      $('run-note').textContent='Starts at minus your monthly outgoings. Adds your take-home as you work, sick pay, the pension on its pay day and PIP each '+pipDayName+'. Solid line: so far. Dotted: if you keep to your weekly aim.';
+    }
 
     /* this tax year */
     const Y=yearForecast(S.entries,S.cfg,today);

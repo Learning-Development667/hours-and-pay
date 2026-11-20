@@ -247,3 +247,20 @@ dialog::backdrop{background:var(--shade)}
 .pill.ok{color:var(--good);border:1px solid var(--good)}
 .pill.short{color:var(--bad);border:1px solid var(--bad)}
 @media (max-width:420px){.out{grid-template-columns:minmax(0,1fr) 48px}.out .field:first-child{grid-column:1/-1}.out{padding-top:10px;border-top:1px solid var(--line)}.out:first-child{border-top:0;padding-top:0}}
+
+/* 21 November 2026: running total */
+:root{--run-red:rgba(240,148,137,.20);--run-black:rgba(123,211,164,.18)}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--run-red:rgba(169,51,40,.12);--run-black:rgba(31,110,76,.12)}}
+:root[data-theme="light"]{--run-red:rgba(169,51,40,.12);--run-black:rgba(31,110,76,.12)}
+@media (min-width:940px){.runcard{grid-column:1/-1}}
+.run-amount{font:600 clamp(40px,11vw,56px)/1.05 var(--display);margin-top:6px}
+.run-amount.red{color:var(--bad)}.run-amount.black{color:var(--good)}
+.run-sub{margin-top:6px;font-size:16px}
+.run-chart{margin-top:14px}
+.run-chart svg{display:block;width:100%;height:auto;max-height:180px}
+.run-line{fill:none;stroke:var(--fg);stroke-width:2.5;stroke-linejoin:round}
+.run-line.fut{stroke:var(--muted);stroke-dasharray:5 5}
+.run-zero{stroke:var(--muted);stroke-width:1.5;stroke-dasharray:2 4}
+.run-dot{fill:var(--gold-fill);stroke:var(--surface);stroke-width:2}
+.run-ends{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:6px}
+.runcard .pill{margin-right:0}

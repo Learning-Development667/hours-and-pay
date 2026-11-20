@@ -194,3 +194,27 @@ function yearForecast(entries,cfg,today){
     mpGross:mpGross,mpTax:round2(mpTaxSoFar+mpTaxAhead),mpTaxKnown:cfg.mpTaxYtd!=null&&cfg.mpTaxYtd!=='',income:income,due:due,taken:taken,diff:round2(taken-due),
     overLine:round2(income-BANDS.higher)};
 }
+
+/* ---- Running total through a cycle: starts at minus the monthly outgoings, then adds money as it is earned or paid ---- */
+function runningTotal(entries,cfg,today,cyc,L){
+  const outs=(Array.isArray(cfg.outgoings)?cfg.outgoings:[]).reduce((t,o)=>t+(Number(o&&o.amount)>0?Number(o.amount):0),0);
+  const base=cyc.projected&&cyc.projected.gross>0?cyc.projected:cyc, ratio=base.gross>0?base.net/base.gross:1;
+  const minsBy=new Map(); for(const e of entries)if(e.date>=cyc.start&&e.date<=cyc.end)minsBy.set(e.date,(minsBy.get(e.date)||0)+e.mins);
+  const mpDay=Math.min(28,Math.max(1,Math.round(Number(cfg.mpDay))||22)), pipWd=cfg.pipDay==null?2:cfg.pipDay, target=cfg.target||0;
+  let pDate=''; for(let d=cyc.start;d<=cyc.end;d=addDays(d,1))if(parts(d).d===mpDay){pDate=workingDayOnOrBefore(d);break}
+  const days=[]; let bal=-outs, cross='', crossed=false, todayBal=null;
+  for(let d=cyc.start;d<=cyc.end;d=addDays(d,1)){
+    const past=d<=today; let gross=0;
+    if(past){gross+=(minsBy.get(d)||0)/60*L.rate; if(L.sspSet.has(d))gross+=cfg.sspDaily||0}
+    else gross+=target*60/7/60*L.rate;
+    let inc=gross*ratio;
+    if(d===pDate)inc+=cyc.pension;
+    if(weekday(d)===pipWd)inc+=cfg.pipWeekly||0;
+    bal=round2(bal+inc);
+    if(!crossed&&bal>=0){crossed=true;cross=d}
+    if(d===today)todayBal=bal;
+    days.push({d:d,bal:bal,past:past});
+  }
+  if(todayBal===null)todayBal=today<cyc.start?-outs:bal;
+  return {outs:round2(outs),days:days,today:todayBal,end:bal,cross:cross,start:-round2(outs)};
+}
