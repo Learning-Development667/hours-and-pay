@@ -138,6 +138,38 @@ function buildLedger(entries,cfg,today){
   }
   return {cycles:cycles,current:cur,rate:rate,codeOk:!!code,stale:stale,worked:worked,sspSet:sspSet,holSet:holSet,dayRate:dr};
 }
+/* Borrowed money (config/main.loan: amount, months, first 'YYYY-MM', paid {'YYYY-MM': amount}).
+   What is left is shared equally over the months not yet paid. Each month's repayment comes out of the
+   MA Group pay landing that month, so its extra hours are worked in the cycle ending on the 14th of it,
+   on top of the weekly aim. */
+function loanMonths(first,n){const out=[];let y=Number(first.slice(0,4)),m=Number(first.slice(5,7));for(let i=0;i<n;i++){out.push(y+'-'+(m<10?'0':'')+m);m++;if(m>12){m=1;y++}}return out}
+function extraMinsFor(due,P,rate,cfg,code){
+  if(!(due>0)||!(rate>0))return null;
+  const base=payFor(P,rate,cfg,code,null,1).net;
+  for(let x=15;x<=300*60;x+=15)if(payFor(P+x,rate,cfg,code,null,1).net-base>=due-0.005)return x;
+  return null;
+}
+function loanPlan(cfg,L,today){
+  const ln=cfg.loan;
+  if(!ln||!(Number(ln.amount)>0)||!(ln.months>=1)||!/^\d{4}-\d{2}$/.test(ln.first||''))return null;
+  const paid=ln.paid&&typeof ln.paid==='object'?ln.paid:{}, months=loanMonths(ln.first,Math.min(36,Math.round(ln.months)));
+  const pd=k=>Number(paid[k])>0?Number(paid[k]):null;
+  const paidTotal=round2(months.reduce((t,k)=>t+(pd(k)||0),0)), left=round2(Math.max(0,Number(ln.amount)-paidTotal));
+  const unpaid=months.filter(k=>pd(k)===null), share=unpaid.length?Math.floor(left/unpaid.length*100)/100:0;
+  const code=parseCode(cfg.maTaxCode), target=cfg.target||0;
+  const rows=months.map(k=>{
+    const p=pd(k), due=p!==null||!left?0:(k===unpaid[unpaid.length-1]?round2(left-share*(unpaid.length-1)):share);
+    const c=cycleOf(k+'-14'), row={month:k,paid:p,due:due,start:c.start,end:c.end,past:c.end<today,extraMins:null,weeks:0};
+    if(due>0&&!row.past){
+      let P,days;
+      if(c.start<=today){const r=L.cycles.find(x=>x.start===c.start);P=r?(r.projected?r.projected.mins:r.mins):0;days=Math.max(1,daysBetween(today,c.end))}
+      else{days=daysBetween(c.start,c.end)+1;P=Math.round(target*60/7*days)}
+      row.extraMins=extraMinsFor(due,P,L.rate,cfg,code); row.weeks=days/7;
+    }
+    return row;
+  });
+  return {amount:round2(Number(ln.amount)),paidTotal:paidTotal,left:left,rows:rows};
+}
 function parseHours(str){
   const s=String(str||'').trim().toLowerCase().replace(',','.');
   if(!s)return null;

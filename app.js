@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=21, APP_DATE='21 November 2026';
+const APP_VERSION=22, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -151,6 +151,26 @@ const APP_VERSION=21, APP_DATE='21 November 2026';
       '<div class="row total"><span class="rl">Left after outgoings</span><span class="rv num">'+esc(money(left))+'</span><span class="rs"><span class="pill '+(left>=0?'ok':'short')+'">'+(left>=0?'Covered':'Short by '+esc(money(-left)))+'</span> '+esc('Against the money that lands from '+dShort(cyc.start)+' to '+dShort(cyc.end)+'.')+'</span></div>'
       :'<p class="empty">No outgoings yet. Choose Change to add the amounts that leave your account each month.</p>';
     $('out-edit').hidden=!S.canWrite;
+
+    /* borrowed money */
+    const LN=loanPlan(S.cfg,L,today), monthName=k=>fmtDate(k+'-01',{month:'long',year:'numeric'});
+    $('loan-rows').innerHTML=LN?
+      '<div class="row"><span class="rl">Borrowed</span><span class="rv num">'+esc(money(LN.amount))+'</span><span class="rs">'+esc('Paid back over '+LN.rows.length+(LN.rows.length===1?' month':' months')+' from '+monthName(LN.rows[0].month)+', out of your MA Group pay.')+'</span></div>'+
+      LN.rows.map(r=>{
+        let v,sub,cls='rs';
+        if(r.paid!==null){v='Paid '+money(r.paid);sub='Paid back.'}
+        else if(!(r.due>0)){v='Nothing due';sub='Already paid off.'}
+        else{
+          v=money(r.due)+' due';cls='rs owe';
+          if(r.past)sub='Not marked as paid yet.';
+          else if(r.extraMins===null)sub='Add your salary in Settings to see the extra hours.';
+          else{const wk=Math.round(r.extraMins/r.weeks/15)*15;sub='Work about '+fmtH(Math.max(15,wk))+' a week more than your '+(S.cfg.target||0)+'h aim, '+fmtH(r.extraMins)+' extra in all, from '+(r.start<=today?'now':dShort(r.start))+' to '+dShort(r.end)+'.'}
+        }
+        return '<div class="row"><span class="rl">'+esc(monthName(r.month))+'</span><span class="rv num">'+esc(v)+'</span><span class="'+cls+'">'+esc(sub)+'</span></div>';
+      }).join('')+
+      '<div class="row total"><span class="rl">Left to pay</span><span class="rv num'+(LN.left>0?' owe':'')+'">'+esc(money(LN.left))+'</span><span class="rs">'+(LN.left>0?esc(money(LN.paidTotal)+' paid back so far.'):'<span class="pill ok">Paid off</span>')+'</span></div>'
+      :'<p class="empty">Nothing borrowed. Choose Change to add money you are paying back.</p>';
+    $('loan-edit').hidden=!S.canWrite;
 
     /* running total: from minus the outgoings into the black */
     const R=runningTotal(S.entries,S.cfg,today,cyc,L), rc=$('run-card');
@@ -471,6 +491,7 @@ const APP_VERSION=21, APP_DATE='21 November 2026';
         f.outgoings.filter(o=>o&&typeof o.name==='string'&&Number(o.amount)>0).slice(0,30).forEach(o=>{const n={name:o.name.slice(0,40),amount:Number(o.amount)};const i=merged.findIndex(x=>x.name.trim().toLowerCase()===n.name.trim().toLowerCase());if(i>=0)merged[i]=n;else merged.push(n)});
         changes.outgoings=merged;
       }
+      if(f.loan&&typeof f.loan==='object'&&Number(f.loan.amount)>0&&/^\d{4}-\d{2}$/.test(f.loan.first||'')){const was=S.cfg.loan&&S.cfg.loan.paid||{};changes.loan={amount:Number(f.loan.amount),months:Math.min(36,Math.max(1,Math.round(Number(f.loan.months)||1))),first:f.loan.first,paid:Object.assign({},was,f.loan.paid&&typeof f.loan.paid==='object'?f.loan.paid:{})}}
       if(f.netPaid&&typeof f.netPaid==='object'){const np=Object.assign({},S.cfg.netPaid||{});Object.keys(f.netPaid).forEach(k=>{if(/^\d{4}-\d{2}$/.test(k)&&Number(f.netPaid[k])>=0)np[k]=Number(f.netPaid[k])});changes.netPaid=np}
       await S.db.doc('config/main').set(Object.assign({},S.cfg,changes));
       toast('Figures updated'+(typeof f.note==='string'&&f.note?': '+f.note.slice(0,80):''));
@@ -498,6 +519,51 @@ const APP_VERSION=21, APP_DATE='21 November 2026';
     const btn=$('out-save'); btn.disabled=true;
     try{await S.db.doc('config/main').set(Object.assign({},S.cfg,{outgoings:list}));$('dlg-out').close();toast('Outgoings saved')}catch(e){writeFailed(e)}
     btn.disabled=false;
+  });
+
+  /* ---------- borrowed money ---------- */
+  const monthLabel=k=>fmtDate(k+'-01',{month:'long',year:'numeric'});
+  function drawLoanPaid(){
+    const keep={}; document.querySelectorAll('#l-paid input').forEach(i=>{keep[i.dataset.m]=i.value});
+    const n=Math.round(Number($('l-months').value)), first=$('l-first').value;
+    const months=n>=1&&n<=36&&/^\d{4}-\d{2}$/.test(first)?loanMonths(first,n):[];
+    $('l-paid').innerHTML=months.length?months.map(k=>'<div class="field"><label for="lp-'+k+'">'+esc(monthLabel(k))+' (£), if paid</label><input id="lp-'+k+'" data-m="'+k+'" type="text" inputmode="decimal" autocomplete="off" value="'+esc(keep[k]!==undefined?keep[k]:(S.loanPaid[k]!=null?String(S.loanPaid[k]):''))+'"><span class="err" hidden></span></div>').join(''):'<p class="hint">Put in the months first.</p>';
+  }
+  $('loan-edit').addEventListener('click',()=>{
+    const ln=S.cfg.loan||{}, cur=(S.ledger?S.ledger.current.pay:todayYmd()).slice(0,7), opts=[];
+    S.loanPaid=Object.assign({},ln.paid||{});
+    let k=loanMonths(cur,1)[0]; const y=Number(k.slice(0,4)), m=Number(k.slice(5,7)), back=m>6?(y)+'-'+String(m-6).padStart(2,'0'):(y-1)+'-'+String(m+6).padStart(2,'0');
+    loanMonths(back,19).forEach(x=>opts.push(x));
+    const first=/^\d{4}-\d{2}$/.test(ln.first||'')?ln.first:cur; if(opts.indexOf(first)<0)opts.unshift(first);
+    $('l-first').innerHTML=opts.map(x=>'<option value="'+x+'"'+(x===first?' selected':'')+'>'+esc(monthLabel(x))+'</option>').join('');
+    $('l-amount').value=ln.amount>0?String(ln.amount):''; $('l-months').value=ln.months>=1?String(ln.months):'3';
+    ['l-amount','l-months'].forEach(id=>clearBad($(id)));
+    document.querySelectorAll('#l-paid input').forEach(i=>i.remove());
+    $('l-paid').innerHTML=''; drawLoanPaid();
+    const rm=$('loan-remove'); rm.hidden=!S.cfg.loan; rm.textContent='Remove borrowed money'; rm.dataset.armed='';
+    $('dlg-loan').showModal();
+  });
+  $('l-months').addEventListener('input',drawLoanPaid); $('l-first').addEventListener('change',drawLoanPaid);
+  $('loan-form').addEventListener('submit',async ev=>{
+    ev.preventDefault(); if(!S.db)return;
+    let firstBad=null; const bad=(el,m)=>{markBad(el,m);if(!firstBad)firstBad=el};
+    const a=$('l-amount'), mo=$('l-months'), amt=parseMoney(a.value), n=Number(mo.value);
+    clearBad(a);clearBad(mo);
+    if(!a.value.trim())bad(a,'Missing information'); else if(amt===null||amt<=0||amt>1000000)bad(a,'Check this');
+    if(!mo.value.trim())bad(mo,'Missing information'); else if(!/^\d{1,2}$/.test(mo.value.trim())||n<1||n>36)bad(mo,'Check this: 1 to 36 months');
+    const paid={};
+    document.querySelectorAll('#l-paid input').forEach(i=>{clearBad(i);const t=i.value.trim();if(!t)return;const v=parseMoney(t);if(v===null||v>1000000)bad(i,'Check this');else if(v>0)paid[i.dataset.m]=v});
+    if(firstBad){firstBad.focus();return}
+    const btn=$('loan-save'); btn.disabled=true;
+    try{await S.db.doc('config/main').set(Object.assign({},S.cfg,{loan:{amount:amt,months:n,first:$('l-first').value,paid:paid}}));$('dlg-loan').close();toast('Borrowed money saved')}catch(e){writeFailed(e)}
+    btn.disabled=false;
+  });
+  $('loan-remove').addEventListener('click',async()=>{
+    const rm=$('loan-remove'); if(!S.db)return;
+    if(!rm.dataset.armed){rm.dataset.armed='1';rm.textContent='Tap again to remove';return}
+    rm.disabled=true;
+    try{const c=Object.assign({},S.cfg);c.loan=null;await S.db.doc('config/main').set(c);$('dlg-loan').close();toast('Borrowed money removed')}catch(e){writeFailed(e)}
+    rm.disabled=false;
   });
 
   /* ---------- settings ---------- */

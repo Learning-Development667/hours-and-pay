@@ -17,7 +17,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=15">
+<link rel="stylesheet" href="styles.css?v=16">
 </head>
 <body>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -140,6 +140,11 @@
         <div class="rows" id="out-rows"></div>
       </section>
 
+      <section class="o2" aria-labelledby="h-loan">
+        <div class="sec-head"><h2 id="h-loan">Borrowed money</h2><button class="link" type="button" id="loan-edit">Change</button></div>
+        <div class="rows" id="loan-rows"></div>
+      </section>
+
       <section class="o2" aria-labelledby="h-year">
         <div class="sec-head"><h2 id="h-year">This tax year</h2><span id="year-range"></span></div>
         <div class="ybar-wrap"><div class="ybar" id="ybar" role="img"></div><div class="ymarks" id="ymarks" aria-hidden="true"></div></div>
@@ -177,6 +182,19 @@
     <div class="outs" id="outs"></div>
     <button class="chip add-shift" type="button" id="out-add">Add an outgoing</button>
     <div class="actions"><button class="primary" type="submit" id="out-save">Save</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlg-loan" aria-labelledby="dlg-loan-title">
+  <form class="sheet" id="loan-form" novalidate>
+    <div class="sheet-head"><h2 id="dlg-loan-title">Borrowed money</h2><button class="ghost" type="button" data-close>Close</button></div>
+    <p>What you borrowed and how many months you are paying it back over. Put in what you pay back each month as you go.</p>
+    <div class="field"><label for="l-amount">Amount borrowed (£)</label><input id="l-amount" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
+    <div class="field"><label for="l-months">Paid back over (months)</label><input id="l-months" type="text" inputmode="numeric" autocomplete="off" maxlength="2"><span class="err" hidden></span></div>
+    <div class="field"><label for="l-first">First repayment</label><select id="l-first"></select><span class="err" hidden></span></div>
+    <h3 class="loan-sub">Paid back</h3>
+    <div id="l-paid"></div>
+    <div class="actions"><button class="primary" type="submit" id="loan-save">Save</button><button class="ghost" type="button" id="loan-remove">Remove borrowed money</button></div>
   </form>
 </dialog>
 
@@ -261,7 +279,7 @@
   </form>
 </dialog>
 <script src="config.js?v=1"></script>
-<script src="calc.js?v=10"></script>
-<script type="module" src="app.js?v=21"></script>
+<script src="calc.js?v=11"></script>
+<script type="module" src="app.js?v=22"></script>
 </body>
 </html>

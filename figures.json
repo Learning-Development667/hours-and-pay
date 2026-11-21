@@ -1,6 +1,6 @@
 {
-  "stamp": "2026-11-21c",
-  "note": "10 holiday days left",
+  "stamp": "2026-11-21d",
+  "note": "£1,000 borrowed, paid back over 3 months",
   "settings": {
     "salary": 60400,
     "contractHours": 37.5,
@@ -56,5 +56,11 @@
       "name": "AppleCare One",
       "amount": 16.99
     }
-  ]
+  ],
+  "loan": {
+    "amount": 1000,
+    "months": 3,
+    "first": "2026-12",
+    "paid": {}
+  }
 }
