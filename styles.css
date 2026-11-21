@@ -85,7 +85,7 @@ button{cursor:pointer}
 .cols{display:flex;flex-direction:column;gap:28px}
 .col{display:contents}
 .o1{order:1}.o2{order:2}.o3{order:3}.o4{order:4}.o5{order:5}
-@media (min-width:940px){
+@media (min-width:860px){
   .cols{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:36px;align-items:start}
   .col{display:flex;flex-direction:column;gap:32px;min-width:0}
 }
@@ -231,7 +231,7 @@ dialog::backdrop{background:var(--shade)}
 
 /* 21 November 2026: the calendar comes first; beside the pay card on wide screens */
 .lead{display:flex;flex-direction:column;gap:24px}
-@media (min-width:940px){.lead{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:24px;align-items:start}}
+@media (min-width:860px){.lead{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:24px;align-items:start}}
 
 /* 21 November 2026: update banner */
 .update{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border:1px solid var(--hair);border-radius:14px;padding:10px 12px 10px 16px;background:var(--surface);font-size:16px;font-weight:500}
@@ -252,7 +252,7 @@ dialog::backdrop{background:var(--shade)}
 :root{--run-red:rgba(240,148,137,.20);--run-black:rgba(123,211,164,.18)}
 @media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--run-red:rgba(169,51,40,.12);--run-black:rgba(31,110,76,.12)}}
 :root[data-theme="light"]{--run-red:rgba(169,51,40,.12);--run-black:rgba(31,110,76,.12)}
-@media (min-width:940px){.runcard{grid-column:1/-1}}
+@media (min-width:860px){.runcard{grid-column:1/-1}}
 .run-amount{font:600 clamp(40px,11vw,56px)/1.05 var(--display);margin-top:6px}
 .run-amount.red{color:var(--bad)}.run-amount.black{color:var(--good)}
 .run-sub{margin-top:6px;font-size:16px}

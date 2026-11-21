@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=26, APP_DATE='21 November 2026';
+const APP_VERSION=27, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
