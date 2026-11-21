@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=22, APP_DATE='21 November 2026';
+const APP_VERSION=23, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -144,36 +144,46 @@ const APP_VERSION=22, APP_DATE='21 November 2026';
       '<div class="row total"><span class="rl">Total this cycle</span><span class="rv num">'+esc(money(cashTotal))+'</span></div>';
 
     /* monthly outgoings against this cycle's income */
-    const outs=(Array.isArray(S.cfg.outgoings)?S.cfg.outgoings:[]).filter(o=>o&&typeof o.name==='string'&&Number(o.amount)>0);
+    const LN=loanPlan(S.cfg,L,today), monthName=k=>fmtDate(k+'-01',{month:'long',year:'numeric'}), LO=loanOutIn(LN,cyc);
+    const outs=(Array.isArray(S.cfg.outgoings)?S.cfg.outgoings:[]).filter(o=>o&&typeof o.name==='string'&&Number(o.amount)>0).concat(LO?[{name:'Borrowed money, '+monthName(LO.month)+' repayment',amount:LO.amount,loan:true}]:[]);
     const outTotal=round2(outs.reduce((t,o)=>t+Number(o.amount),0)), left=round2(cashTotal-outTotal);
-    $('out-rows').innerHTML=outs.length?outs.map(o=>'<div class="row"><span class="rl">'+esc(o.name)+'</span><span class="rv num">'+esc(money(Number(o.amount)))+'</span></div>').join('')+
+    $('out-rows').innerHTML=outs.length?outs.map(o=>'<div class="row"><span class="rl">'+esc(o.name)+'</span><span class="rv num">'+esc(money(Number(o.amount)))+'</span>'+(o.loan?'<span class="rs">'+(LO.paid?'Paid back.':'From the borrowed money below.')+'</span>':'')+'</div>').join('')+
       '<div class="row"><span class="rl"><b>Total outgoings</b></span><span class="rv num"><b>'+esc(money(outTotal))+'</b></span></div>'+
       '<div class="row total"><span class="rl">Left after outgoings</span><span class="rv num">'+esc(money(left))+'</span><span class="rs"><span class="pill '+(left>=0?'ok':'short')+'">'+(left>=0?'Covered':'Short by '+esc(money(-left)))+'</span> '+esc('Against the money that lands from '+dShort(cyc.start)+' to '+dShort(cyc.end)+'.')+'</span></div>'
       :'<p class="empty">No outgoings yet. Choose Change to add the amounts that leave your account each month.</p>';
     $('out-edit').hidden=!S.canWrite;
 
     /* borrowed money */
-    const LN=loanPlan(S.cfg,L,today), monthName=k=>fmtDate(k+'-01',{month:'long',year:'numeric'});
+    const aimH=(S.cfg.target||0)+'h', nextLoan=LN&&LN.rows.find(r=>r.extraMins!==null);
     $('loan-rows').innerHTML=LN?
-      '<div class="row"><span class="rl">Borrowed</span><span class="rv num">'+esc(money(LN.amount))+'</span><span class="rs">'+esc('Paid back over '+LN.rows.length+(LN.rows.length===1?' month':' months')+' from '+monthName(LN.rows[0].month)+', out of your MA Group pay.')+'</span></div>'+
+      '<div class="row"><span class="rl">Borrowed</span><span class="rv num">'+esc(money(LN.amount))+'</span><span class="rs">'+esc('Paid back over '+LN.rows.length+(LN.rows.length===1?' month':' months')+' from '+monthName(LN.rows[0].month)+', out of your MA Group pay on the 25th.')+'</span>'+
+        (nextLoan?'<span class="rs owe">'+esc('Each repayment needs about '+fmtH(nextLoan.extraMins)+' extra in its pay cycle, on top of your '+aimH+' a week.')+'</span>':'')+'</div>'+
       LN.rows.map(r=>{
-        let v,sub,cls='rs';
-        if(r.paid!==null){v='Paid '+money(r.paid);sub='Paid back.'}
-        else if(!(r.due>0)){v='Nothing due';sub='Already paid off.'}
+        let v,sub=[],cls='rs';
+        const span=dShort(r.start)+' to '+dShort(r.end);
+        if(r.paid!==null){v='Paid '+money(r.paid);sub.push('Paid back.')}
+        else if(!(r.due>0)){v='Nothing due';sub.push('Already paid off.')}
         else{
           v=money(r.due)+' due';cls='rs owe';
-          if(r.past)sub='Not marked as paid yet.';
-          else if(r.extraMins===null)sub='Add your salary in Settings to see the extra hours.';
-          else{const wk=Math.round(r.extraMins/r.weeks/15)*15;sub='Work about '+fmtH(Math.max(15,wk))+' a week more than your '+(S.cfg.target||0)+'h aim, '+fmtH(r.extraMins)+' extra in all, from '+(r.start<=today?'now':dShort(r.start))+' to '+dShort(r.end)+'.'}
+          if(r.past)sub.push('Not marked as paid yet.');
+          else if(r.extraMins===null)sub.push('Add your salary and weekly aim in Settings to see the extra hours.');
+          else{
+            sub.push(fmtH(r.extraMins)+' extra on top of your '+aimH+' a week, so about '+fmtH(Math.round(r.needMins/15)*15)+' in all from '+span+'.');
+            if(r.current){
+              if(r.toGo<=0)sub.push('Covered: you have already logged '+fmtH(r.logged)+'.');
+              else sub.push('Logged so far: '+fmtH(r.logged)+'. '+fmtH(r.toGo)+' to go'+(r.weekly?', about '+fmtH(Math.round(r.weekly/15)*15)+' a week to '+dShort(r.end)+'.':' by '+dShort(r.end)+'.'));
+            }else sub.push('About '+fmtH(Math.round(r.weekly/15)*15)+' a week instead of '+aimH+'.');
+          }
         }
-        return '<div class="row"><span class="rl">'+esc(monthName(r.month))+'</span><span class="rv num">'+esc(v)+'</span><span class="'+cls+'">'+esc(sub)+'</span></div>';
+        const done=r.current&&r.toGo<=0&&r.paid===null&&r.due>0;
+        return '<div class="row"><span class="rl">'+esc(monthName(r.month))+'</span><span class="rv num">'+esc(v)+'</span>'+sub.map((t,i)=>'<span class="'+(done&&i===1?'rs good':cls)+'">'+esc(t)+'</span>').join('')+'</div>';
       }).join('')+
-      '<div class="row total"><span class="rl">Left to pay</span><span class="rv num'+(LN.left>0?' owe':'')+'">'+esc(money(LN.left))+'</span><span class="rs">'+(LN.left>0?esc(money(LN.paidTotal)+' paid back so far.'):'<span class="pill ok">Paid off</span>')+'</span></div>'
+      '<div class="row total"><span class="rl">Left to pay</span><span class="rv num'+(LN.left>0?' owe':'')+'">'+esc(money(LN.left))+'</span><span class="rs">'+(LN.left>0?esc(money(LN.paidTotal)+' paid back so far. Each repayment is counted in that month’s outgoings.'):'<span class="pill ok">Paid off</span>')+'</span></div>'
       :'<p class="empty">Nothing borrowed. Choose Change to add money you are paying back.</p>';
     $('loan-edit').hidden=!S.canWrite;
 
     /* running total: from minus the outgoings into the black */
-    const R=runningTotal(S.entries,S.cfg,today,cyc,L), rc=$('run-card');
+    const R=runningTotal(S.entries,Object.assign({},S.cfg,{outgoings:outs}),today,cyc,L), rc=$('run-card');
     rc.hidden=!(R.outs>0);
     if(R.outs>0){
       const inBlack=R.today>=0, amt=$('run-amount');

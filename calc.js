@@ -143,12 +143,14 @@ function buildLedger(entries,cfg,today){
    MA Group pay landing that month, so its extra hours are worked in the cycle ending on the 14th of it,
    on top of the weekly aim. */
 function loanMonths(first,n){const out=[];let y=Number(first.slice(0,4)),m=Number(first.slice(5,7));for(let i=0;i<n;i++){out.push(y+'-'+(m<10?'0':'')+m);m++;if(m>12){m=1;y++}}return out}
-function extraMinsFor(due,P,rate,cfg,code){
+function extraMinsFor(due,B,rate,cfg,code,hol){
   if(!(due>0)||!(rate>0))return null;
-  const base=payFor(P,rate,cfg,code,null,1).net;
-  for(let x=15;x<=300*60;x+=15)if(payFor(P+x,rate,cfg,code,null,1).net-base>=due-0.005)return x;
+  const base=payFor(B,rate,cfg,code,null,1,0,hol).net;
+  for(let x=15;x<=300*60;x+=15)if(payFor(B+x,rate,cfg,code,null,1,0,hol).net-base>=due-0.005)return x;
   return null;
 }
+/* The weekly aim pays for everything else, so the loan needs hours on top of the aim for the whole cycle.
+   Hours already worked above the aim count towards it. */
 function loanPlan(cfg,L,today){
   const ln=cfg.loan;
   if(!ln||!(Number(ln.amount)>0)||!(ln.months>=1)||!/^\d{4}-\d{2}$/.test(ln.first||''))return null;
@@ -156,19 +158,36 @@ function loanPlan(cfg,L,today){
   const pd=k=>Number(paid[k])>0?Number(paid[k]):null;
   const paidTotal=round2(months.reduce((t,k)=>t+(pd(k)||0),0)), left=round2(Math.max(0,Number(ln.amount)-paidTotal));
   const unpaid=months.filter(k=>pd(k)===null), share=unpaid.length?Math.floor(left/unpaid.length*100)/100:0;
-  const code=parseCode(cfg.maTaxCode), target=cfg.target||0;
+  const code=parseCode(cfg.maTaxCode), target=cfg.target||0, holSet=L.holSet||new Set();
   const rows=months.map(k=>{
     const p=pd(k), due=p!==null||!left?0:(k===unpaid[unpaid.length-1]?round2(left-share*(unpaid.length-1)):share);
-    const c=cycleOf(k+'-14'), row={month:k,paid:p,due:due,start:c.start,end:c.end,past:c.end<today,extraMins:null,weeks:0};
+    const c=cycleOf(k+'-14'), row={month:k,paid:p,due:due,start:c.start,end:c.end,past:c.end<today,current:c.start<=today&&c.end>=today,extraMins:null};
     if(due>0&&!row.past){
-      let P,days;
-      if(c.start<=today){const r=L.cycles.find(x=>x.start===c.start);P=r?(r.projected?r.projected.mins:r.mins):0;days=Math.max(1,daysBetween(today,c.end))}
-      else{days=daysBetween(c.start,c.end)+1;P=Math.round(target*60/7*days)}
-      row.extraMins=extraMinsFor(due,P,L.rate,cfg,code); row.weeks=days/7;
+      const days=daysBetween(c.start,c.end)+1; let holN=0;
+      for(let d=c.start;d<=c.end;d=addDays(d,1))if(holSet.has(d))holN++;
+      const B=Math.round(target*60/7*(days-holN)), hol=round2(holN*(L.dayRate||0));
+      row.extraMins=extraMinsFor(due,B,L.rate,cfg,code,hol);
+      if(row.extraMins!==null){
+        row.aimMins=B; row.needMins=B+row.extraMins;
+        if(row.current){
+          const r=L.cycles.find(x=>x.start===c.start);
+          row.logged=r?r.mins:0; row.toGo=Math.max(0,row.needMins-row.logged);
+          let workDays=0; for(let d=addDays(today,1);d<=c.end;d=addDays(d,1))if(!holSet.has(d))workDays++;
+          row.weekly=workDays>0?row.toGo/(workDays/7):null;
+        }else row.weekly=row.needMins/(Math.max(1,days-holN)/7);
+      }
     }
     return row;
   });
   return {amount:round2(Number(ln.amount)),paidTotal:paidTotal,left:left,rows:rows};
+}
+/* The repayment that leaves with the MA Group pay landing in a cycle (the 25th of the month the cycle starts in). */
+function loanOutIn(plan,cyc){
+  if(!plan)return null;
+  const k=cyc.start.slice(0,7), r=plan.rows.find(x=>x.month===k);
+  if(!r)return null;
+  const amount=r.paid!==null?r.paid:r.due;
+  return amount>0?{month:k,amount:amount,paid:r.paid!==null}:null;
 }
 function parseHours(str){
   const s=String(str||'').trim().toLowerCase().replace(',','.');

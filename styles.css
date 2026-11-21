@@ -312,3 +312,5 @@ dialog::backdrop{background:var(--shade)}
 .row .rs.owe,.owe{color:var(--bad);font-weight:600}
 .loan-sub{font:600 18px/1.3 var(--display);margin-top:6px}
 #l-paid{display:flex;flex-direction:column;gap:14px}
+.row .rs.good{color:var(--good);font-weight:600}
+.row .rv.owe,.row.total .rv.owe{color:var(--bad)}
