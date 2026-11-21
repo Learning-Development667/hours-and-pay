@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=24, APP_DATE='21 November 2026';
+const APP_VERSION=25, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -144,7 +144,7 @@ const APP_VERSION=24, APP_DATE='21 November 2026';
       '<div class="row total"><span class="rl">Total this cycle</span><span class="rv num">'+esc(money(cashTotal))+'</span></div>';
 
     /* monthly outgoings against this cycle's income */
-    const LN=loanPlan(S.cfg,L,today), monthName=k=>fmtDate(k+'-01',{month:'long',year:'numeric'}), LO=loanOutIn(LN,cyc);
+    const LN=loanPlan(S.cfg,L,today,S.entries), monthName=k=>fmtDate(k+'-01',{month:'long',year:'numeric'}), LO=loanOutIn(LN,cyc);
     const outs=(Array.isArray(S.cfg.outgoings)?S.cfg.outgoings:[]).filter(o=>o&&typeof o.name==='string'&&Number(o.amount)>0).concat(LO?[{name:'Borrowed money, '+monthName(LO.month)+' repayment',amount:LO.amount,loan:true}]:[]);
     const outTotal=round2(outs.reduce((t,o)=>t+Number(o.amount),0)), left=round2(cashTotal-outTotal);
     $('out-rows').innerHTML=outs.length?outs.map(o=>'<div class="row"><span class="rl">'+esc(o.name)+'</span><span class="rv num">'+esc(money(Number(o.amount)))+'</span>'+(o.loan?'<span class="rs">'+(LO.paid?'Paid back.':'From the borrowed money below.')+'</span>':'')+'</div>').join('')+
@@ -153,32 +153,15 @@ const APP_VERSION=24, APP_DATE='21 November 2026';
       :'<p class="empty">No outgoings yet. Choose Change to add the amounts that leave your account each month.</p>';
     $('out-edit').hidden=!S.canWrite;
 
-    /* borrowed money */
-    const aimH=(S.cfg.target||0)+'h', nextLoan=LN&&LN.rows.find(r=>r.extraMins!==null);
+    /* borrowed money: a plain summary, then the repayments as a table */
+    const aimH=(S.cfg.target||0)+'h';
     $('loan-rows').innerHTML=LN?
-      '<div class="row"><span class="rl">Borrowed</span><span class="rv num">'+esc(money(LN.amount))+'</span><span class="rs">'+esc('Paid back over '+LN.rows.length+(LN.rows.length===1?' month':' months')+' from '+monthName(LN.rows[0].month)+', out of your MA Group pay on the 25th.')+'</span>'+
-        (nextLoan?'<span class="rs owe">'+esc('Each repayment needs about '+fmtH(nextLoan.extraMins)+' extra in its pay cycle, on top of your '+aimH+' a week. Only hours worked count: holiday pay does not.')+'</span>':'')+'</div>'+
-      LN.rows.map(r=>{
-        let v,sub=[],cls='rs';
-        const span=dShort(r.start)+' to '+dShort(r.end);
-        if(r.paid!==null){v='Paid '+money(r.paid);sub.push('Paid back.')}
-        else if(!(r.due>0)){v='Nothing due';sub.push('Already paid off.')}
-        else{
-          v=money(r.due)+' due';cls='rs owe';
-          if(r.past)sub.push('Not marked as paid yet.');
-          else if(r.extraMins===null)sub.push('Add your salary and weekly aim in Settings to see the extra hours.');
-          else{
-            sub.push(fmtH(r.extraMins)+' extra on top of your '+aimH+' a week, so about '+fmtH(Math.round(r.needMins/15)*15)+' in all from '+span+'.');
-            if(r.current){
-              if(r.toGo<=0)sub.push('Covered: you have already logged '+fmtH(r.logged)+'.');
-              else sub.push('Logged so far: '+fmtH(r.logged)+'. '+fmtH(r.toGo)+' to go'+(r.weekly?', about '+fmtH(Math.round(r.weekly/15)*15)+' a week to '+dShort(r.end)+'.':' by '+dShort(r.end)+'.'));
-            }else sub.push('About '+fmtH(Math.round(r.weekly/15)*15)+' a week instead of '+aimH+'.');
-          }
-        }
-        const done=r.current&&r.toGo<=0&&r.paid===null&&r.due>0;
-        return '<div class="row"><span class="rl">'+esc(monthName(r.month))+'</span><span class="rv num">'+esc(v)+'</span>'+sub.map((t,i)=>'<span class="'+(done&&i===1?'rs good':cls)+'">'+esc(t)+'</span>').join('')+'</div>';
-      }).join('')+
-      '<div class="row total"><span class="rl">Left to pay</span><span class="rv num'+(LN.left>0?' owe':'')+'">'+esc(money(LN.left))+'</span><span class="rs">'+(LN.left>0?esc(money(LN.paidTotal)+' paid back so far. Each repayment is counted in that month’s outgoings.'):'<span class="pill ok">Paid off</span>')+'</span></div>'
+      '<div class="row"><span class="rl">Borrowed</span><span class="rv num">'+esc(money(LN.amount))+'</span></div>'+
+      '<div class="row"><span class="rl">Earned back by extra hours</span><span class="rv num">'+esc(money(LN.earned))+'</span><span class="rs">'+esc((LN.extraMins?fmtH(LN.extraMins)+' above':'No hours above')+' your '+aimH+' a week since '+dShort(LN.from)+(LN.extraMins?'':' yet')+'. Holiday does not count.')+'</span></div>'+
+      '<div class="row total"><span class="rl">Still to earn back</span><span class="rv num">'+esc(money(LN.left))+'</span><span class="rs">'+(LN.left>0?esc(LN.needMins?'About '+fmtH(Math.round(LN.needMins/15)*15)+' more: roughly '+fmtH(Math.max(15,Math.round(LN.weekly/15)*15))+' a week on top of your '+aimH+' until '+dShort(LN.deadline)+'.':'Add your salary and weekly aim in Settings to see the hours.'):'<span class="pill ok">Earned back</span>')+'</span></div>'+
+      '<p class="sub">Repayments from your MA Group pay</p><div class="scroll"><table class="loan-table"><thead><tr><th scope="col">Month</th><th scope="col">Amount</th><th scope="col">Status</th></tr></thead><tbody>'+
+      LN.rows.map(r=>'<tr><td>'+esc(monthName(r.month))+'</td><td class="num">'+esc(money(r.paid!==null?r.paid:r.due))+'</td><td>'+(r.paid!==null?'<span class="pill ok">Paid</span>':r.due>0?esc(r.payDate<today?'Not marked paid':'Due '+dShort(r.payDate)):'Nothing due')+'</td></tr>').join('')+
+      '</tbody><tfoot><tr><td>Paid back</td><td class="num">'+esc(money(LN.paidTotal))+'</td><td>'+esc(money(LN.owed)+' to go')+'</td></tr></tfoot></table></div>'
       :'<p class="empty">Nothing borrowed. Choose Change to add money you are paying back.</p>';
     $('loan-edit').hidden=!S.canWrite;
 
@@ -501,7 +484,7 @@ const APP_VERSION=24, APP_DATE='21 November 2026';
         f.outgoings.filter(o=>o&&typeof o.name==='string'&&Number(o.amount)>0).slice(0,30).forEach(o=>{const n={name:o.name.slice(0,40),amount:Number(o.amount)};const i=merged.findIndex(x=>x.name.trim().toLowerCase()===n.name.trim().toLowerCase());if(i>=0)merged[i]=n;else merged.push(n)});
         changes.outgoings=merged;
       }
-      if(f.loan&&typeof f.loan==='object'&&Number(f.loan.amount)>0&&/^\d{4}-\d{2}$/.test(f.loan.first||'')){const was=S.cfg.loan&&S.cfg.loan.paid||{};changes.loan={amount:Number(f.loan.amount),months:Math.min(36,Math.max(1,Math.round(Number(f.loan.months)||1))),first:f.loan.first,paid:Object.assign({},was,f.loan.paid&&typeof f.loan.paid==='object'?f.loan.paid:{})}}
+      if(f.loan&&typeof f.loan==='object'&&Number(f.loan.amount)>0&&/^\d{4}-\d{2}$/.test(f.loan.first||'')){const was=S.cfg.loan&&S.cfg.loan.paid||{};changes.loan={amount:Number(f.loan.amount),months:Math.min(36,Math.max(1,Math.round(Number(f.loan.months)||1))),first:f.loan.first,from:isYmd(f.loan.from)?f.loan.from:f.loan.first+'-15',paid:Object.assign({},was,f.loan.paid&&typeof f.loan.paid==='object'?f.loan.paid:{})}}
       if(f.netPaid&&typeof f.netPaid==='object'){const np=Object.assign({},S.cfg.netPaid||{});Object.keys(f.netPaid).forEach(k=>{if(/^\d{4}-\d{2}$/.test(k)&&Number(f.netPaid[k])>=0)np[k]=Number(f.netPaid[k])});changes.netPaid=np}
       await S.db.doc('config/main').set(Object.assign({},S.cfg,changes));
       toast('Figures updated'+(typeof f.note==='string'&&f.note?': '+f.note.slice(0,80):''));
@@ -540,13 +523,13 @@ const APP_VERSION=24, APP_DATE='21 November 2026';
     $('l-paid').innerHTML=months.length?months.map(k=>'<div class="field"><label for="lp-'+k+'">'+esc(monthLabel(k))+' (£), if paid</label><input id="lp-'+k+'" data-m="'+k+'" type="text" inputmode="decimal" autocomplete="off" value="'+esc(keep[k]!==undefined?keep[k]:(S.loanPaid[k]!=null?String(S.loanPaid[k]):''))+'"><span class="err" hidden></span></div>').join(''):'<p class="hint">Put in the months first.</p>';
   }
   $('loan-edit').addEventListener('click',()=>{
-    const ln=S.cfg.loan||{}, cur=(S.ledger?S.ledger.current.pay:todayYmd()).slice(0,7), opts=[];
+    const ln=S.cfg.loan||{}, curStart=S.ledger?S.ledger.current.start:todayYmd(), cur=curStart.slice(0,7), opts=[];
     S.loanPaid=Object.assign({},ln.paid||{});
     let k=loanMonths(cur,1)[0]; const y=Number(k.slice(0,4)), m=Number(k.slice(5,7)), back=m>6?(y)+'-'+String(m-6).padStart(2,'0'):(y-1)+'-'+String(m+6).padStart(2,'0');
     loanMonths(back,19).forEach(x=>opts.push(x));
     const first=/^\d{4}-\d{2}$/.test(ln.first||'')?ln.first:cur; if(opts.indexOf(first)<0)opts.unshift(first);
     $('l-first').innerHTML=opts.map(x=>'<option value="'+x+'"'+(x===first?' selected':'')+'>'+esc(monthLabel(x))+'</option>').join('');
-    $('l-amount').value=ln.amount>0?String(ln.amount):''; $('l-months').value=ln.months>=1?String(ln.months):'3';
+    $('l-from').value=isYmd(ln.from)?ln.from:curStart; clearBad($('l-from')); $('l-amount').value=ln.amount>0?String(ln.amount):''; $('l-months').value=ln.months>=1?String(ln.months):'3';
     ['l-amount','l-months'].forEach(id=>clearBad($(id)));
     document.querySelectorAll('#l-paid input').forEach(i=>i.remove());
     $('l-paid').innerHTML=''; drawLoanPaid();
@@ -563,9 +546,10 @@ const APP_VERSION=24, APP_DATE='21 November 2026';
     if(!mo.value.trim())bad(mo,'Missing information'); else if(!/^\d{1,2}$/.test(mo.value.trim())||n<1||n>36)bad(mo,'Check this: 1 to 36 months');
     const paid={};
     document.querySelectorAll('#l-paid input').forEach(i=>{clearBad(i);const t=i.value.trim();if(!t)return;const v=parseMoney(t);if(v===null||v>1000000)bad(i,'Check this');else if(v>0)paid[i.dataset.m]=v});
+    const fr=$('l-from'); clearBad(fr); if(!isYmd(fr.value))bad(fr,'Missing information');
     if(firstBad){firstBad.focus();return}
     const btn=$('loan-save'); btn.disabled=true;
-    try{await S.db.doc('config/main').set(Object.assign({},S.cfg,{loan:{amount:amt,months:n,first:$('l-first').value,paid:paid}}));$('dlg-loan').close();toast('Borrowed money saved')}catch(e){writeFailed(e)}
+    try{await S.db.doc('config/main').set(Object.assign({},S.cfg,{loan:{amount:amt,months:n,first:$('l-first').value,from:fr.value,paid:paid}}));$('dlg-loan').close();toast('Borrowed money saved')}catch(e){writeFailed(e)}
     btn.disabled=false;
   });
   $('loan-remove').addEventListener('click',async()=>{

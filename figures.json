@@ -1,6 +1,6 @@
 {
-  "stamp": "2026-11-21d",
-  "note": "£1,000 borrowed, paid back over 3 months",
+  "stamp": "2026-11-21e",
+  "note": "Loan repaid from November, extra hours count from 15 Nov",
   "settings": {
     "salary": 60400,
     "contractHours": 37.5,
@@ -60,7 +60,8 @@
   "loan": {
     "amount": 1000,
     "months": 3,
-    "first": "2026-12",
+    "first": "2026-11",
+    "from": "2026-11-15",
     "paid": {}
   }
 }

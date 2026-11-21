@@ -149,38 +149,34 @@ function extraMinsFor(due,B,rate,cfg,code,hol){
   for(let x=15;x<=300*60;x+=15)if(payFor(B+x,rate,cfg,code,null,1,0,hol).net-base>=due-0.005)return x;
   return null;
 }
-/* The weekly aim pays for everything else, so the loan needs hours on top of the aim for the whole cycle.
-   Hours already worked above the aim count towards it. Holiday never does (Mark, 21 November 2026): holiday days
-   do not lower the aim here, and holiday pay sits in the base, so only hours worked pay the loan. */
-function loanPlan(cfg,L,today){
+/* Borrowed money is earned back by hours worked above the weekly aim, from `from` (Mark, 21 November 2026).
+   The aim is never lowered for holiday and holiday pay never counts: only hours worked pay the loan.
+   Each cycle: extra = hours logged from `from` to today (or the cycle's end) less the aim for those days;
+   its value is the take-home it adds on top of the aim's pay. Repayments (rows) are the money leaving with
+   the MA Group pay on the 25th: what is not yet paid is shared over the months left. */
+function loanPlan(cfg,L,today,entries){
   const ln=cfg.loan;
   if(!ln||!(Number(ln.amount)>0)||!(ln.months>=1)||!/^\d{4}-\d{2}$/.test(ln.first||''))return null;
-  const paid=ln.paid&&typeof ln.paid==='object'?ln.paid:{}, months=loanMonths(ln.first,Math.min(36,Math.round(ln.months)));
+  const amount=round2(Number(ln.amount)), paid=ln.paid&&typeof ln.paid==='object'?ln.paid:{}, months=loanMonths(ln.first,Math.min(36,Math.round(ln.months)));
   const pd=k=>Number(paid[k])>0?Number(paid[k]):null;
-  const paidTotal=round2(months.reduce((t,k)=>t+(pd(k)||0),0)), left=round2(Math.max(0,Number(ln.amount)-paidTotal));
-  const unpaid=months.filter(k=>pd(k)===null), share=unpaid.length?Math.floor(left/unpaid.length*100)/100:0;
-  const code=parseCode(cfg.maTaxCode), target=cfg.target||0, holSet=L.holSet||new Set();
-  const rows=months.map(k=>{
-    const p=pd(k), due=p!==null||!left?0:(k===unpaid[unpaid.length-1]?round2(left-share*(unpaid.length-1)):share);
-    const c=cycleOf(k+'-14'), row={month:k,paid:p,due:due,start:c.start,end:c.end,past:c.end<today,current:c.start<=today&&c.end>=today,extraMins:null};
-    if(due>0&&!row.past){
-      const days=daysBetween(c.start,c.end)+1; let holN=0;
-      for(let d=c.start;d<=c.end;d=addDays(d,1))if(holSet.has(d))holN++;
-      const B=Math.round(target*60/7*days), hol=round2(holN*(L.dayRate||0));
-      row.extraMins=extraMinsFor(due,B,L.rate,cfg,code,hol);
-      if(row.extraMins!==null){
-        row.aimMins=B; row.needMins=B+row.extraMins;
-        if(row.current){
-          const r=L.cycles.find(x=>x.start===c.start);
-          row.logged=r?r.mins:0; row.toGo=Math.max(0,row.needMins-row.logged);
-          let workDays=0; for(let d=addDays(today,1);d<=c.end;d=addDays(d,1))if(!holSet.has(d))workDays++;
-          row.weekly=workDays>0?row.toGo/(workDays/7):null;
-        }else row.weekly=row.needMins/(Math.max(1,days-holN)/7);
-      }
-    }
-    return row;
-  });
-  return {amount:round2(Number(ln.amount)),paidTotal:paidTotal,left:left,rows:rows};
+  const paidTotal=round2(months.reduce((t,k)=>t+(pd(k)||0),0)), owed=round2(Math.max(0,amount-paidTotal));
+  const unpaid=months.filter(k=>pd(k)===null), share=unpaid.length?Math.floor(owed/unpaid.length*100)/100:0;
+  const rows=months.map(k=>{const p=pd(k);return {month:k,paid:p,due:p!==null||!owed?0:(k===unpaid[unpaid.length-1]?round2(owed-share*(unpaid.length-1)):share),payDate:workingDayOnOrBefore(k+'-25')}});
+  const from=isYmd(ln.from)?ln.from:ln.first+'-15', code=parseCode(cfg.maTaxCode), target=cfg.target||0, rate=L.rate;
+  let extraMins=0, earned=0;
+  for(const c of L.cycles){
+    if(c.end<from||c.start>today)continue;
+    const s=c.start>from?c.start:from, e=c.end<today?c.end:today;
+    let logged=0; for(const x of entries||[])if(x.date>=s&&x.date<=e&&x.mins>0)logged+=x.mins;
+    const aim=Math.round(target*60/7*(daysBetween(s,e)+1)), ex=Math.max(0,logged-aim);
+    if(ex>0&&rate>0){extraMins+=ex;earned+=payFor(aim+ex,rate,cfg,code,null,1,c.ssp,c.holPay).net-payFor(aim,rate,cfg,code,null,1,c.ssp,c.holPay).net}
+  }
+  earned=round2(Math.min(amount,earned));
+  const left=round2(Math.max(0,amount-earned));
+  const by=cycleOf(months[months.length-1]+'-14').end, deadline=by>today?by:L.current.end;
+  const needMins=left>0?extraMinsFor(left,Math.round(target*60/7*30),rate,cfg,code,0):0;
+  const daysLeft=Math.max(1,daysBetween(today,deadline));
+  return {amount:amount,from:from,extraMins:extraMins,earned:earned,left:left,needMins:needMins,weekly:needMins?needMins/(daysLeft/7):0,deadline:deadline,paidTotal:paidTotal,owed:owed,rows:rows};
 }
 /* The repayment that leaves with the MA Group pay landing in a cycle (the 25th of the month the cycle starts in). */
 function loanOutIn(plan,cyc){

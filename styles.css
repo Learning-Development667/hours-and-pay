@@ -314,3 +314,5 @@ dialog::backdrop{background:var(--shade)}
 #l-paid{display:flex;flex-direction:column;gap:14px}
 .row .rs.good{color:var(--good);font-weight:600}
 .row .rv.owe,.row.total .rv.owe{color:var(--bad)}
+.loan-table td:last-child,.loan-table th:last-child{text-align:right}
+#loan-rows .sub{margin-top:20px}
