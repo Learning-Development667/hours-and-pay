@@ -18,7 +18,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=23">
+<link rel="stylesheet" href="styles.css?v=24">
 </head>
 <body>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -60,11 +60,11 @@
 <div class="lead">
   <section class="card" id="cal-card" aria-labelledby="h-cal">
       <div class="cal-head"><h2 id="h-cal">Hours worked</h2><span id="cal-sum"></span></div>
-      <p class="hint cal-hint" id="cal-hint">Tap a day to add its shifts or mark it as holiday.</p>
+      <p class="hint cal-hint" id="cal-hint">Tap a day to add its shifts, plan them ahead or mark it as holiday.</p>
     <p class="hint cal-hol" id="cal-hol" hidden></p>
       <div class="cal-dow" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
       <div class="cal" id="cal"></div>
-      <p class="cal-key" aria-hidden="true"><span><i class="k-has"></i>Worked</span><span><i class="k-ssp"></i>Sick pay</span><span><i class="k-off"></i>Weekend or not worked</span><span><i class="k-hol"></i>Holiday</span></p>
+      <p class="cal-key" aria-hidden="true"><span><i class="k-has"></i>Worked</span><span><i class="k-ssp"></i>Sick pay</span><span><i class="k-off"></i>Weekend or not worked</span><span><i class="k-hol"></i>Holiday</span><span><i class="k-plan"></i>Planned</span></p>
     </section>
 
     <section class="hero" aria-labelledby="hero-eyebrow">
@@ -166,6 +166,11 @@
 <dialog id="dlg-day" aria-labelledby="dlg-day-title">
   <form class="sheet" id="day-form" novalidate>
     <div class="sheet-head"><h2 id="dlg-day-title">Day</h2><button class="ghost" type="button" data-close>Close</button></div>
+    <fieldset class="mode" id="d-mode"><legend class="sr-only">Hours for this day</legend>
+      <label><input type="radio" name="d-mode" value="worked" id="d-worked"><span>Worked</span></label>
+      <label><input type="radio" name="d-mode" value="planned" id="d-planned"><span>Planned</span></label>
+    </fieldset>
+    <div class="plan-note" id="d-plan-note" hidden><p>These are planned hours. If you worked them, tap Confirm as worked. If they changed, change the times first.</p><button class="primary" type="button" id="d-confirm">Confirm as worked</button></div>
     <label class="holtoggle" for="d-hol"><input type="checkbox" id="d-hol"><span>Holiday, paid at your full day rate <b id="d-hol-rate"></b></span></label>
     <p class="legacy" id="day-legacy" hidden></p>
     <div class="shifts" id="shifts"></div>
@@ -282,7 +287,7 @@
   </form>
 </dialog>
 <script src="config.js?v=1"></script>
-<script src="calc.js?v=15"></script>
-<script type="module" src="app.js?v=28"></script>
+<script src="calc.js?v=16"></script>
+<script type="module" src="app.js?v=29"></script>
 </body>
 </html>

@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=28, APP_DATE='21 November 2026';
+const APP_VERSION=29, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -51,7 +51,7 @@ const APP_VERSION=28, APP_DATE='21 November 2026';
 
   const DEFAULTS={salary:0,contractHours:37.5,salaryEstimated:false,target:0,maTaxCode:'1257L',pensionPct:0,
     ytdDate:'',ytdTaxable:null,ytdTax:null,mpGross:0,mpCode:'BR',mpActual:null,pipWeekly:0,pipDay:2,mpDay:22,sspDaily:0,sspFrom:'',mpTaxYtd:null,outgoings:[],holidayLeft:null,holidayAsOf:'',people:[]};
-  const S={entries:[],cfg:Object.assign({},DEFAULTS),hasCfg:false,got:{hours:false,cfg:false},status:'loading',
+  const S={entries:[],plans:[],cfg:Object.assign({},DEFAULTS),hasCfg:false,got:{hours:false,cfg:false},status:'loading',
     view:null,canWrite:true,db:null,day:null,ledger:null};
 
   let toastTimer=null;
@@ -65,7 +65,7 @@ const APP_VERSION=28, APP_DATE='21 November 2026';
   /* ---------- render ---------- */
   function stat(label,value){return '<div><dt>'+esc(label)+'</dt><dd class="num">'+esc(value)+'</dd></div>'}
   function render(){
-    const today=todayYmd(), L=buildLedger(S.entries,S.cfg,today);
+    const today=todayYmd(), L=buildLedger(S.entries,S.cfg,today,S.plans);
     S.ledger=L;
     let cyc=L.cycles.find(c=>c.start===S.view);
     if(!cyc){S.view=L.current.start;cyc=L.cycles.find(c=>c.start===S.view)}
@@ -107,7 +107,7 @@ const APP_VERSION=28, APP_DATE='21 November 2026';
     const course=$('course'), target=S.cfg.target||0;
     if(isCur&&cyc.projected&&cyc.daysLeft>0&&L.rate>0){
       const pr=cyc.projected;
-      course.innerHTML='On course for about <b>'+esc(money(pr.net))+'</b> take-home on '+esc(dLong(workingDayOnOrBefore(cyc.pay)))+' if you keep to '+esc(String(target))+' hours a week from here ('+esc(fmtH(pr.mins))+' in all): '+
+      course.innerHTML='On course for about <b>'+esc(money(pr.net))+'</b> take-home on '+esc(dLong(workingDayOnOrBefore(cyc.pay)))+' if you '+(cyc.planAhead?'work your planned hours and keep to '+esc(String(target))+' hours a week on other days':'keep to '+esc(String(target))+' hours a week from here')+' ('+esc(fmtH(pr.mins))+' in all): '+
         esc(money(pr.gross))+' before tax, '+esc(money(Math.max(0,pr.tax)))+' income tax, '+esc(money(pr.ni))+' National Insurance'+(pr.pens>0?', '+esc(money(pr.pens))+' workplace pension':'')+'.';
       course.hidden=false;
     }else course.hidden=true;
@@ -232,17 +232,19 @@ const APP_VERSION=28, APP_DATE='21 November 2026';
 
     /* calendar and days */
     const dm=dayMap();
+    const planOf=new Map(S.plans.map(p=>[p.date,p]));
     let cal='';
     for(let i=(weekday(cyc.start)+6)%7;i>0;i--)cal+='<span class="cal-pad" aria-hidden="true"></span>';
     for(let d=cyc.start;d<=cyc.end;d=addDays(d,1)){
       const x=dm.get(d), mins=x?x.mins:0, p=parts(d), mon=d===cyc.start||p.d===1, sick=!mins&&L.sspSet.has(d), hol=!!(x&&x.holiday);
-      const wkend=weekday(d)===0||weekday(d)===6, off=!mins&&!hol&&!sick&&(wkend||d<today);
-      const cls='cal-day'+(hol?' hol':'')+(mins?' has':'')+(sick?' ssp':'')+(off?' off':'')+(d===today?' today':'')+(d>today?' future':'');
-      const label=dFull(d)+(d===today?', today':'')+(hol?', holiday':mins?', '+fmtH(mins)+' worked':sick?', sick pay':wkend?', weekend':off?', not worked':', no hours yet');
-      cal+='<button type="button" class="'+cls+'" data-day="'+d+'" aria-label="'+esc(label)+'"><small>'+(mon?esc(monShort(d)):'')+'</small><span class="cd-n">'+p.d+'</span><span class="cd-h'+(sick?' sick':'')+(hol?' holl':'')+'">'+(hol?'Hol':mins?esc(fmtCompact(mins)):sick?'SSP':'')+'</span></button>';
+      const pl=!mins&&!hol?planOf.get(d):null, wkend=weekday(d)===0||weekday(d)===6, off=!mins&&!hol&&!sick&&!pl&&(wkend||d<today);
+      const cls='cal-day'+(hol?' hol':'')+(mins?' has':'')+(pl?' plan':'')+(sick&&!pl?' ssp':'')+(off?' off':'')+(d===today?' today':'')+(d>today?' future':'');
+      const label=dFull(d)+(d===today?', today':'')+(hol?', holiday':mins?', '+fmtH(mins)+' worked':pl?', '+fmtH(pl.mins)+' planned'+(d<today?', not yet confirmed':''):sick?', sick pay':wkend?', weekend':off?', not worked':', no hours yet');
+      cal+='<button type="button" class="'+cls+'" data-day="'+d+'" aria-label="'+esc(label)+'"><small>'+(mon?esc(monShort(d)):'')+'</small><span class="cd-n">'+p.d+'</span><span class="cd-h'+(pl?' planl':sick?' sick':'')+(hol?' holl':'')+'">'+(hol?'Hol':mins?esc(fmtCompact(mins)):pl?esc(fmtCompact(pl.mins)):sick?'SSP':'')+'</span></button>';
     }
     $('cal').innerHTML=cal;
-    $('cal-sum').textContent=fmtH(cyc.mins)+(isCur?' so far':'');
+    const cycPlan=S.plans.filter(p=>p.date>=cyc.start&&p.date<=cyc.end&&!dm.has(p.date)).reduce((t,p)=>t+p.mins,0);
+    $('cal-sum').textContent=fmtH(cyc.mins)+(isCur?' so far':'')+(cycPlan?', '+fmtH(cycPlan)+' planned':'');
     $('cal-hint').hidden=!S.canWrite;
     const hl=S.cfg.holidayLeft, hasLeft=hl!==null&&hl!==undefined&&hl!==''&&isFinite(Number(hl));
     const booked=S.entries.filter(e=>e.holiday&&(!isYmd(S.cfg.holidayAsOf)||e.date>=S.cfg.holidayAsOf)).length;
@@ -332,20 +334,28 @@ const APP_VERSION=28, APP_DATE='21 November 2026';
   function openDay(date){
     if(!S.db||!isYmd(date))return;
     if(!S.canWrite){toast('This sign-in is not allowed to change the ledger.');return}
-    const x=dayMap().get(date);
-    S.day={date:date,ids:x?x.ids:[]};
+    const x=dayMap().get(date), pl=S.plans.find(p=>p.date===date)||null;
+    S.day={date:date,ids:(x?x.ids:[]).concat(pl&&!(x&&x.ids.includes(pl.id))?[pl.id]:[]),plan:pl};
+    const planMode=!x&&(pl||date>todayYmd());
+    $('d-worked').checked=!planMode; $('d-planned').checked=!!planMode;
+    $('d-plan-note').hidden=!(pl&&!x);
     $('dlg-day-title').textContent=dFull(date);
     $('d-hol').checked=!!(x&&x.holiday); $('d-hol-rate').textContent='('+money(dayRate(S.cfg))+')';
     const untimed=x&&!x.shifts.length&&!x.holiday;
     $('day-legacy').textContent=untimed?'This day has '+fmtH(x.mins)+' logged without times. Saving shifts replaces it.':'';
     $('day-legacy').hidden=!untimed;
     $('d-note').value=x?x.notes.join('. ').slice(0,140):'';
-    drawShifts(x&&x.shifts.length?x.shifts.map(s=>({start:s.start,end:s.end})):[{start:'',end:''}]);
-    const clr=$('d-clear'); clr.hidden=!x; clr.textContent='Clear day'; clr.dataset.armed='';
+    const src=x&&x.shifts.length?x.shifts:(!x&&pl&&pl.shifts.length?pl.shifts:null);
+    drawShifts(src?src.map(s=>({start:s.start,end:s.end})):[{start:'',end:''}]);
+    if(!x&&pl&&pl.note)$('d-note').value=pl.note;
+    const clr=$('d-clear'); clr.hidden=!x&&!pl; clr.textContent='Clear day'; clr.dataset.armed='';
     syncHol();
     $('dlg-day').showModal();
   }
-  function syncHol(){const on=$('d-hol').checked;$('shifts').hidden=on;$('add-shift').hidden=on||document.querySelectorAll('#shifts .shift').length>=6;if(on)$('day-total').textContent='Holiday';else showDayTotal()}
+  function syncMode(){const pm=$('d-planned').checked&&!$('d-hol').checked;$('d-save').textContent=pm?'Save plan':'Save';$('d-mode').hidden=$('d-hol').checked}
+  document.querySelectorAll('input[name="d-mode"]').forEach(r=>r.addEventListener('change',syncMode));
+  $('d-confirm').addEventListener('click',()=>{$('d-worked').checked=true;syncMode();$('day-form').requestSubmit()});
+  function syncHol(){syncMode();const on=$('d-hol').checked;$('shifts').hidden=on;$('add-shift').hidden=on||document.querySelectorAll('#shifts .shift').length>=6;if(on)$('day-total').textContent='Holiday';else showDayTotal()}
   $('d-hol').addEventListener('change',syncHol);
   $('day-form').addEventListener('submit',async ev=>{
     ev.preventDefault(); const day=S.day; if(!day||!S.db)return;
@@ -380,10 +390,11 @@ const APP_VERSION=28, APP_DATE='21 November 2026';
     const shifts=good.map(g=>({start:g.start,end:g.end})), mins=shiftMins(shifts), note=$('d-note').value.trim().slice(0,140);
     const btn=$('d-save'); btn.disabled=true;
     try{
-      await S.db.collection('hours').doc(day.date).set({date:day.date,mins:mins,shifts:shifts,note:note,at:Date.now()});
+      const planned=$('d-planned').checked;
+      await S.db.collection('hours').doc(day.date).set({date:day.date,mins:mins,shifts:shifts,note:note,planned:planned,at:Date.now()});
       for(const id of day.ids)if(id!==day.date)await S.db.collection('hours').doc(id).delete();
       $('dlg-day').close(); S.view=cycleOf(day.date).start; render();
-      toast('Saved '+fmtH(mins)+' for '+dLong(day.date));
+      toast((planned?'Planned ':day.plan?'Confirmed ':'Saved ')+fmtH(mins)+' for '+dLong(day.date));
     }catch(e){writeFailed(e)}
     btn.disabled=false;
   });
@@ -644,14 +655,14 @@ const APP_VERSION=28, APP_DATE='21 November 2026';
     const hol=d.holiday===true, mins=hol?0:Math.round(Number(d.mins));
     if(!hol&&(!(mins>0)||mins>1440))return null;
     const shifts=Array.isArray(d.shifts)?d.shifts.filter(s=>s&&timeMins(s.start)!==null&&timeMins(s.end)!==null&&timeMins(s.end)>timeMins(s.start)).slice(0,10).map(s=>({start:s.start,end:s.end})):[];
-    return {id:id,date:d.date,mins:mins,holiday:hol,shifts:hol?[]:shifts,note:typeof d.note==='string'?d.note.slice(0,140):'',at:Number(d.at)||0};
+    return {id:id,date:d.date,mins:mins,holiday:hol,planned:!hol&&d.planned===true,shifts:hol?[]:shifts,note:typeof d.note==='string'?d.note.slice(0,140):'',at:Number(d.at)||0};
   }
   /* ---------- sign-in and live data ---------- */
   let auth=null, store=null, unsubs=[], slow=null;
   function show(view){['view-wait','view-signin','view-app'].forEach(v=>{$(v).hidden=v!==view})}
   function stopData(){
     unsubs.forEach(u=>{try{u()}catch(e){}}); unsubs=[]; clearTimeout(slow);
-    S.entries=[];S.cfg=Object.assign({},DEFAULTS);S.hasCfg=false;S.got={hours:false,cfg:false};S.view=null;S.db=null;S.canWrite=true;S.setupShown=false;
+    S.entries=[];S.plans=[];S.cfg=Object.assign({},DEFAULTS);S.hasCfg=false;S.got={hours:false,cfg:false};S.view=null;S.db=null;S.canWrite=true;S.setupShown=false;
   }
   function startData(){
     const db=S.db=makeDb(store);
@@ -667,8 +678,10 @@ const APP_VERSION=28, APP_DATE='21 November 2026';
       settle();
     },fail));
     unsubs.push(db.collection('hours').orderBy('date','desc').limit(1000).onSnapshot(snap=>{
-      S.entries=snap.docs.map(d=>cleanEntry(d.id,d.data())).filter(Boolean)
+      const all=snap.docs.map(d=>cleanEntry(d.id,d.data())).filter(Boolean)
         .sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:b.at-a.at);
+      /* Planned hours are kept apart: nothing that counts pay, sick pay or the loan sees them. */
+      S.entries=all.filter(e=>!e.planned); S.plans=all.filter(e=>e.planned);
       if(!snap.metadata.fromCache||snap.docs.length)S.got.hours=true;
       settle();
     },fail));

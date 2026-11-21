@@ -332,3 +332,20 @@ dialog::backdrop{background:var(--shade)}
 /* 21 November 2026: scaling rules from Daybook. One centred 640 column on every phone, the iPhone Duo folded,
    unfolded and on its side; only from 1000px (a Mac) does it widen to two columns. Safe areas on all four sides. */
 @media (min-width:1000px){.wrap{max-width:calc(1080px + 32px + var(--safe-l) + var(--safe-r))}}
+/* 21 November 2026: planned hours, violet with a dashed edge until confirmed as worked */
+:root{--plan-bg:rgba(181,150,240,.14);--plan-line:rgba(181,150,240,.75);--plan-fg:#CDB8F7}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--plan-bg:rgba(104,64,180,.07);--plan-line:#9C83D0;--plan-fg:#5B3BA0}}
+:root[data-theme="light"]{--plan-bg:rgba(104,64,180,.07);--plan-line:#9C83D0;--plan-fg:#5B3BA0}
+.cal-day.plan{background:var(--plan-bg);border:1.5px dashed var(--plan-line)}
+.cd-h.planl{color:var(--plan-fg)}
+.cal-key .k-plan{background:var(--plan-bg);border:1.5px dashed var(--plan-line)}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.mode{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;border:1px solid var(--line);border-radius:999px;padding:3px;margin:0;background:var(--raised)}
+.mode label{position:relative;display:block;cursor:pointer}
+.mode input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.mode span{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:999px;font-weight:600;font-size:16px;color:var(--muted)}
+.mode input:checked+span{background:var(--gold-fill);color:var(--on-gold)}
+.mode input#d-planned:checked+span{background:var(--plan-bg);color:var(--plan-fg);box-shadow:inset 0 0 0 1.5px var(--plan-line)}
+.mode input:focus-visible+span{outline:3px solid var(--gold);outline-offset:2px}
+.plan-note{border:1.5px dashed var(--plan-line);background:var(--plan-bg);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.plan-note p{font-size:15px;color:var(--fg)}

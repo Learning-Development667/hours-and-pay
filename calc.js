@@ -89,7 +89,7 @@ function pensionNet(cfg){
 }
 function countWeekday(start,end,wd){let n=0;for(let d=start;d<=end;d=addDays(d,1))if(weekday(d)===wd)n++;return n}
 
-function buildLedger(entries,cfg,today){
+function buildLedger(entries,cfg,today,plans){
   const rate=hourlyRate(cfg), code=parseCode(cfg.maTaxCode), cur=cycleOf(today);
   const byCycle=new Map(), worked=new Set(), holSet=new Set(); let first=cur.start,last=cur.start;
   if(cfg.sspDaily>0&&isYmd(cfg.sspFrom)&&cfg.sspFrom<=today){const k=cycleOf(cfg.sspFrom).start;if(k<first)first=k}
@@ -127,7 +127,11 @@ function buildLedger(entries,cfg,today){
     if(c.start===cur.start&&target>0){
       const left=Math.max(0,daysBetween(today,c.end));
       row.daysLeft=left;
-      row.projected=payFor(Math.round(mins+target*60/7*Math.max(0,left-holAhead)),rate,cfg,code,base,m,ssp,round2(holAll*dr));
+      /* Planned hours stand in for the weekly aim on the days they are planned for (after today). */
+      let planMins=0, planDays=0;
+      for(const p of plans||[])if(p.date>today&&p.date<=c.end&&!holSet.has(p.date)){planMins+=p.mins;planDays++}
+      row.planAhead=planMins;
+      row.projected=payFor(Math.round(mins+planMins+target*60/7*Math.max(0,left-holAhead-planDays)),rate,cfg,code,base,m,ssp,round2(holAll*dr));
     }
     if(base){chain.cum=pay.cumAfter;chain.paid=pay.paidAfter}
     row.pension=pn.net; row.pensionActual=pn.actual;
