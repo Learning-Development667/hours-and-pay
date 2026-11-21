@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=31, APP_DATE='21 November 2026';
+const APP_VERSION=32, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -254,16 +254,19 @@ const APP_VERSION=31, APP_DATE='21 November 2026';
       const mpos=nm===null?0:Number(pc(nm)), lab=nm===null?'':(nm===0?'Covered without hours':fmtH(nm)+' covers outgoings');
       const span=dShort(CV.next.start)+' to '+dShort(CV.next.end);
       const aria=fmtH(w)+' worked. '+(nm===null?'Outgoings cannot be covered by hours alone.':nm===0?'Outgoings are covered without hours.':fmtH(nm)+' covers next month’s outgoings. '+(CV.covered?money(CV.leftOver)+' left over so far.':(CV.onPace?'On track.':'Behind.')+' '+fmtH(nm-w)+' still needed.'));
-      let rows='<div class="row"><span class="rl">Worked '+(CV.past?'':'so far')+'</span><span class="rv num">'+esc(fmtH(w))+'</span></div>';
+      let rows='<div class="row"><span class="rl">Outgoings '+esc(span)+'</span><span class="rv num">'+esc(money(CV.outs))+'</span>'+(CV.loan?'<span class="rs">'+esc('The '+money(CV.loan)+' loan repayment included.')+'</span>':'')+'</div>'+
+        '<div class="row"><span class="rl">Covered by pension and PIP</span><span class="rv num">'+esc(money(Math.min(CV.outs,round2(CV.pen+CV.pip))))+'</span><span class="rs">'+esc('Pension '+money(CV.pen)+', PIP '+money(CV.pip)+'.')+'</span></div>'+
+        '<div class="row"><span class="rl"><b>Left for your hours</b></span><span class="rv num"><b>'+esc(money(CV.needNet))+'</b></span><span class="rs">'+esc(nm===null?'More than hours alone can cover.':nm===0?'Nothing: the pension and PIP cover it all.':'Covered at '+fmtH(nm)+' worked.')+'</span></div>'+
+        '<div class="row"><span class="rl">Worked '+(CV.past?'':'so far')+'</span><span class="rv num">'+esc(fmtH(w))+'</span></div>';
       if(nm===null)rows+='<div class="row"><span class="rl redt">Outgoings</span><span class="rv num redt">Not covered by hours</span></div>';
-      else if(CV.covered)rows+='<div class="row"><span class="rl">Outgoings covered</span><span class="rv num">'+esc(nm?'Yes, at '+fmtH(nm):'Yes')+'</span></div><div class="row"><span class="rl green">Left over'+(CV.past?'':' so far')+'</span><span class="rv num green">'+esc(money(CV.leftOver))+'</span></div>';
+      else if(CV.covered)rows+='<div class="row"><span class="rl green">Left over'+(CV.past?'':' so far')+'</span><span class="rv num green">'+esc(money(CV.leftOver))+'</span></div>';
       else rows+='<div class="row"><span class="rl'+(CV.onPace?'':' redt')+'">Still needed</span><span class="rv num'+(CV.onPace?'':' redt')+'">'+esc(fmtH(nm-w)+(CV.past?'':' by '+dShort(cyc.end)))+'</span><span class="rs">'+esc(CV.onPace?'On track for the days gone so far.':'Behind for the days gone so far.')+'</span></div>';
       cvEl.innerHTML='<h3>Covering next month’s outgoings</h3><p class="csub">'+esc('These hours are paid '+dShort(workingDayOnOrBefore(cyc.pay))+', for '+span+'.')+'</p>'+
         '<div class="cbar-wrap">'+(nm?'<span class="cmark-l'+(mpos>75?' end':mpos<25?' start':'')+'" style="left:'+mpos+'%">'+esc(lab)+'</span><span class="cmark" style="left:'+mpos+'%"></span>':'')+
         '<div class="cbar" role="img" aria-label="'+esc(aria)+'">'+bars+'</div></div>'+
         '<p class="ckey" aria-hidden="true"><span><i class="k1"></i>Below</span><span><i class="k2"></i>Covering outgoings</span><span><i class="k3"></i>Money left over</span></p>'+
         '<div class="rows">'+rows+'</div>'+
-        '<p class="cnote">'+esc((nm?fmtH(nm)+' pays':'Your pension and PIP pay')+' the outgoings for '+span+' ('+money(CV.outs)+(CV.loan?', the '+money(CV.loan)+' loan repayment included':'')+')'+(nm?', with your pension and PIP':'')+'. Each hour after that leaves about '+money(CV.perHour)+'.')+'</p>';
+        '<p class="cnote">'+esc('Each hour after '+(nm?fmtH(nm):'that')+' leaves about '+money(CV.perHour)+'.')+'</p>';
     }
     const cycPlan=S.plans.filter(p=>p.date>=cyc.start&&p.date<=cyc.end&&!dm.has(p.date)).reduce((t,p)=>t+p.mins,0);
     $('cal-sum').textContent=fmtH(cyc.mins)+(isCur?' so far':'')+(cycPlan?', '+fmtH(cycPlan)+' planned':'');
