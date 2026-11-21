@@ -15,9 +15,17 @@ A private ledger for Mark and Shelley: hours Mark works at MA Group, with live e
 - `config.js` holds only the public Firebase web settings. The database rules in the Firebase console hold the two real email addresses; `firestore.rules` here is the template with placeholders.
 - **Version number:** bump `APP_VERSION` (and `APP_DATE`) in `app.js` and `version` in `version.json` together on every commit that changes the app. The footer and Settings show the version; when `version.json` on the site is newer than the open copy, a banner offers "Update now" (checked on opening, on returning to the app, and every 10 minutes).
 - Run `node --check` on every JS file before committing. Bump the `?v=` on `styles.css`, `calc.js`, `app.js` and `config.js` in `index.html` when they change.
-- Test with `node tests/app-test.js` (headless Chromium with a stand-in Firebase; checks sign-in, set-up, add, edit, delete, settings, 390 dark and 320 light, no sideways scroll, controls 44px or more) and `node tests/sizes-test.js` (other phones, including the iPhone Duo's cover screen at about 466x678 and inner screen at about 626x890 and 890x626, estimates from Apple's pixels at 3x: no sideways scroll, nothing under 44px, the day sheet fits; screenshots in /tmp). Both share `tests/harness.js`. Two columns start at 860px, so the Duo's inner screen on its side gets the side-by-side layout. Say plainly what was not tried on an iPhone.
+- Test with `node tests/app-test.js` (headless Chromium with a stand-in Firebase; checks sign-in, set-up, add, edit, delete, settings, 390 dark and 320 light, no sideways scroll, controls 44px or more) and `node tests/sizes-test.js` (320, 390, 440, the iPhone Duo folded, unfolded upright and on its side, a phone on its side and a Mac: one column no wider than 640 under 1000px, no sideways scroll, nothing under 44px, the day sheet fits; screenshots in /tmp). Both share `tests/harness.js`. Say plainly what was not tried on an iPhone.
 - Anything that stops a save marks the field itself in red with "Missing information" or "Check this".
 - Always give Mark the direct link to a console or settings page.
+
+## Scaling (the iPhone Duo and every other phone; Daybook's rules, Mark, 21 November 2026)
+- Viewport `width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content`; `apple-mobile-web-app-capable`; a light and a dark `theme-color`; the manifest is `standalone`, `portrait`.
+- One layout: the page is one centred column, 640 wide at most (`.wrap`), on every phone and on the Duo folded, unfolded (about 670) and on its side (about 950). Only from 1000px (the Mac, at Mark's earlier request) does it widen to two columns. Sheets stay 540 wide at most.
+- Safe areas on all four sides (`--safe-t`, `--safe-b`, `--safe-l`, `--safe-r`): the column adds `--safe-l` and `--safe-r` to its 16px sides. They are 0 when not needed.
+- Grids are `repeat(n, minmax(0, 1fr))`; grids of cards that open use `align-items: start` and `align-self: start`.
+- Never size anything to `innerHeight` or `100vh` at start-up (opening, turning and the keyboard change it); use CSS (`dvh`) or `visualViewport.height` when something must sit above the keyboard. No fold or device detection.
+- If this is ever wrapped as an App Store app it must be built with Xcode 27.1 or later, or it letterboxes on the Duo's inner screen. A Home Screen web app does not.
 
 ## Shape
 - Plain HTML, CSS and JS, no build step. Firebase JS SDK v10 modular from gstatic (Auth email and password, Firestore). Fonts from Google Fonts. The Content Security Policy is in `index.html`.
