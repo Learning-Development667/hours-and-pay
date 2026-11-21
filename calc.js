@@ -258,6 +258,24 @@ function yearForecast(entries,cfg,today){
 }
 
 /* ---- MA Group pay that lands in a cycle: the pay for the previous cycle's hours, paid on the 25th inside this one ---- */
+/* Hours that cover next month's outgoings (Mark, 21 November 2026). A cycle's hours are paid on the 25th, which
+   lands in the next cycle; with the pension and PIP landing there too, how many hours does it take to cover that
+   cycle's outgoings (the loan repayment included)? Sick pay and holiday pay in this cycle count, as real money. */
+function hoursCover(cfg,L,cyc,today,loanPlanned){
+  const rate=L.rate; if(!(rate>0))return null;
+  const next=cycleOf(addDays(cyc.end,1)), code=parseCode(cfg.maTaxCode);
+  const outs0=(Array.isArray(cfg.outgoings)?cfg.outgoings:[]).reduce((t,o)=>t+(Number(o&&o.amount)>0?Number(o.amount):0),0);
+  const lo=loanOutIn(loanPlanned,next), outs=round2(outs0+(lo?lo.amount:0));
+  const pip=round2(countWeekday(next.start,next.end,cfg.pipDay==null?2:cfg.pipDay)*(cfg.pipWeekly||0)), pen=pensionNet(cfg).net;
+  const needNet=round2(Math.max(0,outs-pen-pip));
+  const row=L.cycles.find(r=>r.start===cyc.start), ssp=row?row.ssp:0, hol=row?row.holPay:0, worked=row?row.mins:0;
+  const net=m=>payFor(m,rate,cfg,code,null,1,ssp,hol).net;
+  let needMins=0; if(net(0)<needNet){needMins=null;for(let m=15;m<=300*60;m+=15)if(net(m)>=needNet){needMins=m;break}}
+  const days=daysBetween(cyc.start,cyc.end)+1, gone=today<cyc.start?0:today>cyc.end?days:daysBetween(cyc.start,today)+1;
+  const covered=needMins!==null&&worked>=needMins, onPace=needMins!==null&&(covered||worked>=needMins*gone/days);
+  return {next:next,outs:outs,loan:lo?lo.amount:0,pen:pen,pip:pip,needNet:needNet,needMins:needMins,worked:worked,covered:covered,onPace:onPace,
+    leftOver:covered?round2(net(worked)-needNet):0,perHour:round2(net(Math.max(worked,needMins||0)+60)-net(Math.max(worked,needMins||0))),aimMins:Math.round((cfg.target||0)*60/7*days),past:cyc.end<today};
+}
 function landingPay(cfg,cyc,L){
   const prev=cycleOf(addDays(cyc.start,-1)), date=workingDayOnOrBefore(prev.pay), ym=prev.pay.slice(0,7);
   const paid=cfg.netPaid&&typeof cfg.netPaid==='object'&&Number(cfg.netPaid[ym])>=0&&cfg.netPaid[ym]!==null&&cfg.netPaid[ym]!==''?Number(cfg.netPaid[ym]):null;

@@ -349,3 +349,24 @@ dialog::backdrop{background:var(--shade)}
 .mode input:focus-visible+span{outline:3px solid var(--gold);outline-offset:2px}
 .plan-note{border:1.5px dashed var(--plan-line);background:var(--plan-bg);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
 .plan-note p{font-size:15px;color:var(--fg)}
+/* 21 November 2026: hours that cover next month's outgoings. Red below, black covering, green left over. */
+:root{--cover:#E8E2D4;--cover-on:#0A1420;--left:#5FC48E;--below:#E8786C}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--cover:#12202E;--cover-on:#FFFFFF;--left:#2E8A5F;--below:#B53A2E}}
+:root[data-theme="light"]{--cover:#12202E;--cover-on:#FFFFFF;--left:#2E8A5F;--below:#B53A2E}
+.cover{border-top:1px solid var(--hair);margin-top:18px;padding-top:16px}
+.cover h3{font:600 19px/1.2 var(--display);margin:0}
+.cover .csub{font-size:14px;color:var(--muted);margin:2px 0 0}
+.cbar-wrap{position:relative;padding-top:26px;margin:14px 0 10px}
+.cbar{position:relative;height:22px;border-radius:11px;background:var(--track);overflow:hidden}
+.cbar i{position:absolute;top:0;bottom:0}
+.cbar .b-below{background:var(--below)}.cbar .b-cover{background:var(--cover)}.cbar .b-left{background:var(--left)}
+.cmark{position:absolute;top:20px;height:34px;width:2px;background:var(--fg);transform:translateX(-1px)}
+.cmark-l{position:absolute;top:0;font-size:12px;font-weight:600;white-space:nowrap;transform:translateX(-50%)}
+.cmark-l.end{transform:translateX(-100%)}.cmark-l.start{transform:none}
+.ckey{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--muted)}
+.ckey span{display:inline-flex;align-items:center;gap:6px}.ckey i{width:14px;height:14px;border-radius:4px}
+.ckey .k1{background:var(--below)}.ckey .k2{background:var(--cover)}.ckey .k3{background:var(--left)}
+.cover .rows{margin-top:10px}
+.cover .rv.green,.cover .rl.green{color:var(--good);font-weight:600}
+.cover .rv.redt,.cover .rl.redt{color:var(--bad);font-weight:600}
+.cover .cnote{font-size:14px;color:var(--muted);margin-top:8px}

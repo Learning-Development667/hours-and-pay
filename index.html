@@ -18,7 +18,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=24">
+<link rel="stylesheet" href="styles.css?v=25">
 </head>
 <body>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -65,6 +65,7 @@
       <div class="cal-dow" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
       <div class="cal" id="cal"></div>
       <p class="cal-key" aria-hidden="true"><span><i class="k-has"></i>Worked</span><span><i class="k-ssp"></i>Sick pay</span><span><i class="k-off"></i>Weekend or not worked</span><span><i class="k-hol"></i>Holiday</span><span><i class="k-plan"></i>Planned</span></p>
+      <div class="cover" id="cover" hidden></div>
     </section>
 
     <section class="hero" aria-labelledby="hero-eyebrow">
@@ -194,11 +195,10 @@
 <dialog id="dlg-loan" aria-labelledby="dlg-loan-title">
   <form class="sheet" id="loan-form" novalidate>
     <div class="sheet-head"><h2 id="dlg-loan-title">Borrowed money</h2><button class="ghost" type="button" data-close>Close</button></div>
-    <p>What you borrowed and how many months you are paying it back over. Hours worked above your weekly aim count towards it. Put in what you pay back each month as you go.</p>
+    <p>What you borrowed and how many months you are paying it back over. Put in what you pay back each month as you go.</p>
     <div class="field"><label for="l-amount">Amount borrowed (£)</label><input id="l-amount" type="text" inputmode="decimal" autocomplete="off"><span class="err" hidden></span></div>
     <div class="field"><label for="l-months">Paid back over (months)</label><input id="l-months" type="text" inputmode="numeric" autocomplete="off" maxlength="2"><span class="err" hidden></span></div>
     <div class="field"><label for="l-first">First repayment</label><select id="l-first"></select><span class="err" hidden></span></div>
-    <div class="field"><label for="l-from">Count extra hours from</label><input id="l-from" type="date"><span class="err" hidden></span></div>
     <h3 class="loan-sub">Paying back each month</h3>
     <p>Leave a month blank to pay its share. Put in more if you can afford it: the rest is spread over the months left.</p>
     <div id="l-paid"></div>
@@ -287,7 +287,7 @@
   </form>
 </dialog>
 <script src="config.js?v=1"></script>
-<script src="calc.js?v=16"></script>
-<script type="module" src="app.js?v=30"></script>
+<script src="calc.js?v=17"></script>
+<script type="module" src="app.js?v=31"></script>
 </body>
 </html>
