@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=29, APP_DATE='21 November 2026';
+const APP_VERSION=30, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -136,6 +136,7 @@ const APP_VERSION=29, APP_DATE='21 November 2026';
       if(parts(d).d===mpDay&&!pDate)pDate=d;
       if(weekday(d)===pipWd){if(!pipFirst)pipFirst=d;pipLast=d}
     }
+    $('h-income').textContent='Money in, '+dShort(cyc.start)+' to '+dShort(cyc.end);
     const LP=landingPay(S.cfg,cyc,L), cashTotal=round2(LP.amount+cyc.pension+cyc.pip);
     $('income').innerHTML=
       '<div class="row"><span class="rl">MA Group pay</span><span class="rv num">'+esc(money(LP.amount))+'</span><span class="rs">'+esc(when(LP.date)+', for hours from '+dShort(LP.from)+' to '+dShort(LP.to)+'. '+(LP.actual?'The amount on your payslip.':LP.known?'Estimate from the hours logged then.':'No hours were logged for those dates.'))+'</span></div>'+

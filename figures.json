@@ -1,6 +1,6 @@
 {
-  "stamp": "2026-11-21e",
-  "note": "Loan repaid from November, extra hours count from 15 Nov",
+  "stamp": "2026-11-21f",
+  "note": "September and October take-home from your payslips",
   "settings": {
     "salary": 60400,
     "contractHours": 37.5,
@@ -63,5 +63,9 @@
     "first": "2026-11",
     "from": "2026-11-15",
     "paid": {}
+  },
+  "netPaid": {
+    "2026-09": 3496.17,
+    "2026-10": 886.16
   }
 }
