@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=23, APP_DATE='21 November 2026';
+const APP_VERSION=24, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -157,7 +157,7 @@ const APP_VERSION=23, APP_DATE='21 November 2026';
     const aimH=(S.cfg.target||0)+'h', nextLoan=LN&&LN.rows.find(r=>r.extraMins!==null);
     $('loan-rows').innerHTML=LN?
       '<div class="row"><span class="rl">Borrowed</span><span class="rv num">'+esc(money(LN.amount))+'</span><span class="rs">'+esc('Paid back over '+LN.rows.length+(LN.rows.length===1?' month':' months')+' from '+monthName(LN.rows[0].month)+', out of your MA Group pay on the 25th.')+'</span>'+
-        (nextLoan?'<span class="rs owe">'+esc('Each repayment needs about '+fmtH(nextLoan.extraMins)+' extra in its pay cycle, on top of your '+aimH+' a week.')+'</span>':'')+'</div>'+
+        (nextLoan?'<span class="rs owe">'+esc('Each repayment needs about '+fmtH(nextLoan.extraMins)+' extra in its pay cycle, on top of your '+aimH+' a week. Only hours worked count: holiday pay does not.')+'</span>':'')+'</div>'+
       LN.rows.map(r=>{
         let v,sub=[],cls='rs';
         const span=dShort(r.start)+' to '+dShort(r.end);

@@ -150,7 +150,8 @@ function extraMinsFor(due,B,rate,cfg,code,hol){
   return null;
 }
 /* The weekly aim pays for everything else, so the loan needs hours on top of the aim for the whole cycle.
-   Hours already worked above the aim count towards it. */
+   Hours already worked above the aim count towards it. Holiday never does (Mark, 21 November 2026): holiday days
+   do not lower the aim here, and holiday pay sits in the base, so only hours worked pay the loan. */
 function loanPlan(cfg,L,today){
   const ln=cfg.loan;
   if(!ln||!(Number(ln.amount)>0)||!(ln.months>=1)||!/^\d{4}-\d{2}$/.test(ln.first||''))return null;
@@ -165,7 +166,7 @@ function loanPlan(cfg,L,today){
     if(due>0&&!row.past){
       const days=daysBetween(c.start,c.end)+1; let holN=0;
       for(let d=c.start;d<=c.end;d=addDays(d,1))if(holSet.has(d))holN++;
-      const B=Math.round(target*60/7*(days-holN)), hol=round2(holN*(L.dayRate||0));
+      const B=Math.round(target*60/7*days), hol=round2(holN*(L.dayRate||0));
       row.extraMins=extraMinsFor(due,B,L.rate,cfg,code,hol);
       if(row.extraMins!==null){
         row.aimMins=B; row.needMins=B+row.extraMins;
