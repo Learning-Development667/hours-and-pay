@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=25, APP_DATE='21 November 2026';
+const APP_VERSION=26, APP_DATE='21 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -154,14 +154,14 @@ const APP_VERSION=25, APP_DATE='21 November 2026';
     $('out-edit').hidden=!S.canWrite;
 
     /* borrowed money: a plain summary, then the repayments as a table */
-    const aimH=(S.cfg.target||0)+'h';
+    const aimH=(S.cfg.target||0)+'h', monShortY=k=>fmtDate(k+'-01',{month:'short',year:'numeric'});
     $('loan-rows').innerHTML=LN?
       '<div class="row"><span class="rl">Borrowed</span><span class="rv num">'+esc(money(LN.amount))+'</span></div>'+
       '<div class="row"><span class="rl">Earned back by extra hours</span><span class="rv num">'+esc(money(LN.earned))+'</span><span class="rs">'+esc((LN.extraMins?fmtH(LN.extraMins)+' above':'No hours above')+' your '+aimH+' a week since '+dShort(LN.from)+(LN.extraMins?'':' yet')+'. Holiday does not count.')+'</span></div>'+
       '<div class="row total"><span class="rl">Still to earn back</span><span class="rv num">'+esc(money(LN.left))+'</span><span class="rs">'+(LN.left>0?esc(LN.needMins?'About '+fmtH(Math.round(LN.needMins/15)*15)+' more: roughly '+fmtH(Math.max(15,Math.round(LN.weekly/15)*15))+' a week on top of your '+aimH+' until '+dShort(LN.deadline)+'.':'Add your salary and weekly aim in Settings to see the hours.'):'<span class="pill ok">Earned back</span>')+'</span></div>'+
       '<p class="sub">Repayments from your MA Group pay</p><div class="scroll"><table class="loan-table"><thead><tr><th scope="col">Month</th><th scope="col">Amount</th><th scope="col">Status</th></tr></thead><tbody>'+
-      LN.rows.map(r=>'<tr><td>'+esc(monthName(r.month))+'</td><td class="num">'+esc(money(r.paid!==null?r.paid:r.due))+'</td><td>'+(r.paid!==null?'<span class="pill ok">Paid</span>':r.due>0?esc(r.payDate<today?'Not marked paid':'Due '+dShort(r.payDate)):'Nothing due')+'</td></tr>').join('')+
-      '</tbody><tfoot><tr><td>Paid back</td><td class="num">'+esc(money(LN.paidTotal))+'</td><td>'+esc(money(LN.owed)+' to go')+'</td></tr></tfoot></table></div>'
+      LN.rows.map(r=>'<tr><td>'+(S.canWrite?'<button type="button" data-loan-month="'+r.month+'" aria-label="'+esc('Change what you pay in '+monthName(r.month))+'">'+esc(monShortY(r.month))+'</button>':esc(monShortY(r.month)))+'</td><td class="num">'+esc(money(r.paid!==null?r.paid:r.due))+(r.paid!==null&&r.paid>r.share+0.005&&r.payDate>today?'<small class="extra">extra</small>':'')+'</td><td>'+(r.paid!==null&&r.payDate<=today?'<span class="pill ok">Paid</span>':(r.paid!==null||r.due>0)?esc(r.payDate<today?'Not marked paid':'Due '+dShort(r.payDate)):'Nothing due')+'</td></tr>').join('')+
+      '</tbody><tfoot><tr><td>Paid so far</td><td class="num">'+esc(money(LN.paidSoFar))+'</td><td>'+esc(money(Math.max(0,LN.amount-LN.paidSoFar))+' left')+'</td></tr></tfoot></table></div>'+(S.canWrite?'<p class="hint loan-hint">Paying more one month? Tap the month to put in what you are paying. The rest is spread over the months left.</p>':'')
       :'<p class="empty">Nothing borrowed. Choose Change to add money you are paying back.</p>';
     $('loan-edit').hidden=!S.canWrite;
 
@@ -236,9 +236,9 @@ const APP_VERSION=25, APP_DATE='21 November 2026';
     for(let i=(weekday(cyc.start)+6)%7;i>0;i--)cal+='<span class="cal-pad" aria-hidden="true"></span>';
     for(let d=cyc.start;d<=cyc.end;d=addDays(d,1)){
       const x=dm.get(d), mins=x?x.mins:0, p=parts(d), mon=d===cyc.start||p.d===1, sick=!mins&&L.sspSet.has(d), hol=!!(x&&x.holiday);
-      const off=!mins&&!hol&&d<today;
-      const cls='cal-day'+(hol?' hol':'')+(mins?' has':'')+(off?' off':'')+(d===today?' today':'')+(d>today?' future':'');
-      const label=dFull(d)+(d===today?', today':'')+(hol?', holiday':mins?', '+fmtH(mins)+' worked':sick?', not worked, sick pay':off?', not worked':', no hours yet');
+      const wkend=weekday(d)===0||weekday(d)===6, off=!mins&&!hol&&!sick&&(wkend||d<today);
+      const cls='cal-day'+(hol?' hol':'')+(mins?' has':'')+(sick?' ssp':'')+(off?' off':'')+(d===today?' today':'')+(d>today?' future':'');
+      const label=dFull(d)+(d===today?', today':'')+(hol?', holiday':mins?', '+fmtH(mins)+' worked':sick?', sick pay':wkend?', weekend':off?', not worked':', no hours yet');
       cal+='<button type="button" class="'+cls+'" data-day="'+d+'" aria-label="'+esc(label)+'"><small>'+(mon?esc(monShort(d)):'')+'</small><span class="cd-n">'+p.d+'</span><span class="cd-h'+(sick?' sick':'')+(hol?' holl':'')+'">'+(hol?'Hol':mins?esc(fmtCompact(mins)):sick?'SSP':'')+'</span></button>';
     }
     $('cal').innerHTML=cal;
@@ -282,6 +282,7 @@ const APP_VERSION=25, APP_DATE='21 November 2026';
     else if(t.dataset.day){openDay(t.dataset.day)}
     else if(t.dataset.removeOut!==undefined){const r=readOuts();r.splice(Number(t.dataset.removeOut),1);drawOuts(r.length?r:[{name:'',amount:''}])}
     else if(t.dataset.removeShift!==undefined){const rows=readRows();rows.splice(Number(t.dataset.removeShift),1);drawShifts(rows);const f=document.querySelector('#shifts [data-k="start"]');if(f)f.focus()}
+    else if(t.dataset.loanMonth){$('loan-edit').click();const f=$('lp-'+t.dataset.loanMonth);if(f){f.focus();f.select()}}
     else if(t.dataset.openSettings!==undefined){openSettings()}
     else if(t.dataset.close!==undefined){t.closest('dialog').close()}
   });
@@ -520,7 +521,8 @@ const APP_VERSION=25, APP_DATE='21 November 2026';
     const keep={}; document.querySelectorAll('#l-paid input').forEach(i=>{keep[i.dataset.m]=i.value});
     const n=Math.round(Number($('l-months').value)), first=$('l-first').value;
     const months=n>=1&&n<=36&&/^\d{4}-\d{2}$/.test(first)?loanMonths(first,n):[];
-    $('l-paid').innerHTML=months.length?months.map(k=>'<div class="field"><label for="lp-'+k+'">'+esc(monthLabel(k))+' (£), if paid</label><input id="lp-'+k+'" data-m="'+k+'" type="text" inputmode="decimal" autocomplete="off" value="'+esc(keep[k]!==undefined?keep[k]:(S.loanPaid[k]!=null?String(S.loanPaid[k]):''))+'"><span class="err" hidden></span></div>').join(''):'<p class="hint">Put in the months first.</p>';
+    const LP=S.ledger&&S.cfg.loan?loanPlan(S.cfg,S.ledger,todayYmd(),S.entries):null, shares={}; if(LP)LP.rows.forEach(r=>{shares[r.month]=r.share});
+    $('l-paid').innerHTML=months.length?months.map(k=>'<div class="field"><label for="lp-'+k+'">'+esc(monthLabel(k))+' (£)'+(shares[k]?', share '+esc(money(shares[k])):'')+'</label><input id="lp-'+k+'" data-m="'+k+'" type="text" inputmode="decimal" autocomplete="off" value="'+esc(keep[k]!==undefined?keep[k]:(S.loanPaid[k]!=null?String(S.loanPaid[k]):''))+'"><span class="err" hidden></span></div>').join(''):'<p class="hint">Put in the months first.</p>';
   }
   $('loan-edit').addEventListener('click',()=>{
     const ln=S.cfg.loan||{}, curStart=S.ledger?S.ledger.current.start:todayYmd(), cur=curStart.slice(0,7), opts=[];

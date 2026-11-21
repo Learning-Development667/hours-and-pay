@@ -316,3 +316,16 @@ dialog::backdrop{background:var(--shade)}
 .row .rv.owe,.row.total .rv.owe{color:var(--bad)}
 .loan-table td:last-child,.loan-table th:last-child{text-align:right}
 #loan-rows .sub{margin-top:20px}
+/* 21 November 2026: weekends red; sick pay days their own blue; loan month buttons */
+:root{--off-bg:rgba(240,148,137,.15);--off-line:rgba(240,148,137,.55);--ssp-bg:rgba(150,172,235,.16);--ssp-line:rgba(150,172,235,.6);--ssp-fg:#BFCBF4}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--off-bg:rgba(169,51,40,.09);--off-line:#D9A49C;--ssp-bg:rgba(58,84,160,.09);--ssp-line:#A9B6DA;--ssp-fg:#34508F}}
+:root[data-theme="light"]{--off-bg:rgba(169,51,40,.09);--off-line:#D9A49C;--ssp-bg:rgba(58,84,160,.09);--ssp-line:#A9B6DA;--ssp-fg:#34508F}
+.cal-day.ssp{background:var(--ssp-bg);border-color:var(--ssp-line)}
+.cd-h.sick{color:var(--ssp-fg);font-size:11px;letter-spacing:.04em}
+.cal-key .k-ssp{background:var(--ssp-bg);border-color:var(--ssp-line)}
+.loan-table td button{text-align:left}
+.loan-table .extra{font-size:12px;font-weight:600;color:var(--good);margin-left:4px}
+.loan-hint{margin-top:10px}
+.loan-table td{white-space:normal;height:auto;padding-block:8px}
+.loan-table td:first-child{white-space:nowrap}
+.loan-table .extra{display:block;margin-left:0}
