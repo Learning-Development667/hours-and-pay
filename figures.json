@@ -1,15 +1,15 @@
 {
-  "stamp": "2026-11-21f",
-  "note": "September and October take-home from your payslips",
+  "stamp": "2026-11-24a",
+  "note": "November payslip: £1,811.25 take-home",
   "settings": {
     "salary": 60400,
     "contractHours": 37.5,
     "target": 15,
     "maTaxCode": "344L M1",
     "pensionPct": 4,
-    "ytdDate": "2026-10-25",
-    "ytdTaxable": 31132.87,
-    "ytdTax": 6303.84,
+    "ytdDate": "2026-11-25",
+    "ytdTaxable": 33737.18,
+    "ytdTax": 6767.04,
     "mpGross": 16500.48,
     "mpCode": "BR",
     "mpActual": 1100.04,
@@ -66,6 +66,7 @@
   },
   "netPaid": {
     "2026-09": 3496.17,
-    "2026-10": 886.16
+    "2026-10": 886.16,
+    "2026-11": 1811.25
   }
 }
