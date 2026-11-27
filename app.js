@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=33, APP_DATE='26 November 2026';
+const APP_VERSION=34, APP_DATE='27 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -27,6 +27,7 @@ const APP_VERSION=33, APP_DATE='26 November 2026';
   const money=n=>GBP.format(Math.abs(n)<0.005?0:n);
   const fmtDate=(s,o)=>new Intl.DateTimeFormat('en-GB',Object.assign({timeZone:'UTC'},o)).format(toDate(s));
   const dShort=s=>fmtDate(s,{day:'numeric',month:'short'});
+  const moneyShort=v=>'\u00a3'+Math.round(v).toLocaleString('en-GB');
   const dLong=s=>fmtDate(s,{weekday:'short',day:'numeric',month:'short'});
   const dYear=s=>fmtDate(s,{day:'numeric',month:'short',year:'numeric'});
   const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -232,15 +233,39 @@ const APP_VERSION=33, APP_DATE='26 November 2026';
     /* calendar and days */
     const dm=dayMap();
     const planOf=new Map(S.plans.map(p=>[p.date,p]));
-    let cal='';
-    for(let i=(weekday(cyc.start)+6)%7;i>0;i--)cal+='<span class="cal-pad" aria-hidden="true"></span>';
-    for(let d=cyc.start;d<=cyc.end;d=addDays(d,1)){
-      const x=dm.get(d), mins=x?x.mins:0, p=parts(d), mon=d===cyc.start||p.d===1, sick=!mins&&L.sspSet.has(d), hol=!!(x&&x.holiday);
-      const pl=!mins&&!hol?planOf.get(d):null, wkend=weekday(d)===0||weekday(d)===6, off=!mins&&!hol&&!sick&&!pl&&(wkend||d<today);
-      const cls='cal-day'+(hol?' hol':'')+(mins?' has':'')+(pl?' plan':'')+(sick&&!pl?' ssp':'')+(off?' off':'')+(d===today?' today':'')+(d>today?' future':'');
-      const label=dFull(d)+(d===today?', today':'')+(hol?', holiday':mins?', '+fmtH(mins)+' worked':pl?', '+fmtH(pl.mins)+' planned'+(d<today?', not yet confirmed':''):sick?', sick pay':wkend?', weekend':off?', not worked':', no hours yet');
-      cal+='<button type="button" class="'+cls+'" data-day="'+d+'" aria-label="'+esc(label)+'"><small>'+(mon?esc(monShort(d)):'')+'</small><span class="cd-n">'+p.d+'</span><span class="cd-h'+(pl?' planl':sick?' sick':'')+(hol?' holl':'')+'">'+(hol?'Hol':mins?esc(fmtCompact(mins)):pl?esc(fmtCompact(pl.mins)):sick?'SSP':'')+'</span></button>';
+    /* Monday to Friday only (Mark never works weekends), with each week's take-home and hours in the last column.
+       Take-home for a week is its share of the cycle's pay (hours, sick pay and holiday pay at the cycle's
+       take-home rate); weeks still to come show an estimate from planned hours, holiday or the weekly aim. */
+    const P=cyc.projected||cyc, ratio=P.gross>0?P.net/P.gross:(cyc.gross>0?cyc.net/cyc.gross:0.76);
+    const dRate=L.dayRate||0, sspD=S.cfg.sspDaily||0, aimDay=(S.cfg.target||0)*60/5;
+    let cal='', firstShown=true, totMins=0, totNet=0, totEst=0;
+    /* A cycle starting on a Saturday or Sunday folds those days into its first full week. */
+    const firstMon=mondayOf(weekday(cyc.start)===6?addDays(cyc.start,2):weekday(cyc.start)===0?addDays(cyc.start,1):cyc.start);
+    for(let mon=firstMon;mon<=cyc.end;mon=addDays(mon,7)){
+      const from=mon===firstMon?cyc.start:mon, to=addDays(mon,6)<cyc.end?addDays(mon,6):cyc.end;
+      let wMins=0, wGross=0, wEst=0, anyPast=false, anyFuture=false;
+      for(let d=from;d<=to;d=addDays(d,1)){
+        const x=dm.get(d), mins=x?x.mins:0, hol=!!(x&&x.holiday), sick=!mins&&L.sspSet.has(d), pl=!mins&&!hol?planOf.get(d):null, wd=weekday(d)>=1&&weekday(d)<=5;
+        if(d<=today){anyPast=true;wMins+=mins;wGross+=mins/60*L.rate+(sick?sspD:0)+(hol?dRate:0)}
+        else{anyFuture=true;if(mins){wMins+=mins;wGross+=mins/60*L.rate}else if(hol)wEst+=dRate;else if(pl)wEst+=pl.mins/60*L.rate;else if(wd)wEst+=aimDay/60*L.rate}
+      }
+      for(let k=0;k<5;k++){
+        const d=addDays(mon,k);
+        if(d<cyc.start||d>cyc.end){cal+='<span class="cal-pad" aria-hidden="true"></span>';continue}
+        const x=dm.get(d), mins=x?x.mins:0, hol=!!(x&&x.holiday), sick=!mins&&L.sspSet.has(d), pl=!mins&&!hol?planOf.get(d):null, p=parts(d);
+        const mlab=firstShown||p.d<=5&&parts(addDays(d,-(k===0?3:1))).m!==p.m;
+        firstShown=false;
+        const off=!mins&&!hol&&!sick&&!pl&&d<today;
+        const cls='cal-day'+(hol?' hol':'')+(mins?' has':'')+(pl?' plan':'')+(sick&&!pl?' ssp':'')+(off?' off':'')+(d===today?' today':'')+(d>today?' future':'');
+        const label=dFull(d)+(d===today?', today':'')+(hol?', holiday':mins?', '+fmtH(mins)+' worked':pl?', '+fmtH(pl.mins)+' planned'+(d<today?', not yet confirmed':''):sick?', sick pay':off?', not worked':', no hours yet');
+        cal+='<button type="button" class="'+cls+'" data-day="'+d+'" aria-label="'+esc(label)+'"><small>'+(mlab?esc(monShort(d)):'')+'</small><span class="cd-n">'+p.d+'</span><span class="cd-h'+(pl?' planl':sick?' sick':'')+(hol?' holl':'')+'">'+(hol?'Hol':mins?esc(fmtCompact(mins)):pl?esc(fmtCompact(pl.mins)):sick?'SSP':'')+'</span></button>';
+      }
+      const net=wGross*ratio, est=(wGross+wEst)*ratio, future=!anyPast;
+      totMins+=wMins; totNet+=net; totEst+=est;
+      const sumLabel='Week of '+dShort(from)+': '+(future?'about '+money(est)+' take-home if you keep to plan':money(net)+' take-home, '+fmtH(wMins)+' worked'+(anyFuture&&wEst>0?', about '+money(est)+' by the end of the week':''));
+      cal+='<div class="cal-sumcell'+(future?' est':'')+'" role="note" aria-label="'+esc(sumLabel)+'"><span class="cs-m num">'+esc((future?'\u2248':'')+moneyShort(future?est:net))+'</span><span class="cs-h num">'+esc(future?'est.':(fmtCompact(wMins)||'0h'))+'</span></div>';
     }
+    cal+='<div class="cal-total"><span>Total so far</span></div><div class="cal-sumcell tot" role="note" aria-label="'+esc('Total so far: '+money(totNet)+' take-home, '+fmtH(totMins)+' worked. About '+money(totEst)+' by '+dShort(cyc.end)+'.')+'"><span class="cs-m num">'+esc(moneyShort(totNet))+'</span><span class="cs-h num">'+esc(fmtCompact(totMins)||'0h')+'</span></div>';
     $('cal').innerHTML=cal;
     /* hours that cover next month's outgoings */
     const CV=hoursCover(S.cfg,L,cyc,today,loanPlan(S.cfg,L,today,S.entries)), cvEl=$('cover');

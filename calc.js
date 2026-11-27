@@ -60,7 +60,7 @@ function hourlyRate(cfg){return cfg.salary>0&&cfg.contractHours>0?round2(cfg.sal
 /* Statutory Sick Pay: since 6 April 2026 it is paid from the first day of sickness (no waiting days and no
    four-day rule; Employment Rights Act 2025). Paid for each weekday with no hours at all, from the start date,
    for at most 28 weeks of 5 days. A day with any hours is not a sick day; a holiday day is not either.
-   Only days already passed are counted. MA Group's November 2026 payroll paid SSP for single days off. */
+   Only days already passed are counted (not today, which may still be worked). MA Group's November 2026 payroll paid SSP for single days off. */
 var SSP_WEEKS=28;
 /* Holiday pay: a full day at the contracted rate (salary / 52 weeks / 5 days), as MA Group's payroll uses. */
 function dayRate(cfg){return cfg.salary>0?round2(cfg.salary/260):0}
@@ -68,7 +68,7 @@ function sspDaySet(cfg,today,worked,hol){
   const set=new Set();
   if(!(cfg.sspDaily>0)||!isYmd(cfg.sspFrom))return set;
   const cap=SSP_WEEKS*5;
-  for(let d=cfg.sspFrom;d<=today&&set.size<cap;d=addDays(d,1)){const wd=weekday(d);if(wd>=1&&wd<=5&&!worked.has(d)&&!(hol&&hol.has(d)))set.add(d)}
+  for(let d=cfg.sspFrom;d<today&&set.size<cap;d=addDays(d,1)){const wd=weekday(d);if(wd>=1&&wd<=5&&!worked.has(d)&&!(hol&&hol.has(d)))set.add(d)}
   return set;
 }
 /* The workplace pension is taken after tax (relief at source), so it does not lower taxable pay. */

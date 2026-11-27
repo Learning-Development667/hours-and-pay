@@ -18,7 +18,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=25">
+<link rel="stylesheet" href="styles.css?v=26">
 </head>
 <body>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -62,9 +62,9 @@
       <div class="cal-head"><h2 id="h-cal">Hours worked</h2><span id="cal-sum"></span></div>
       <p class="hint cal-hint" id="cal-hint">Tap a day to add its shifts, plan them ahead or mark it as holiday.</p>
     <p class="hint cal-hol" id="cal-hol" hidden></p>
-      <div class="cal-dow" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+      <div class="cal-dow" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span class="dow-wk">Week</span></div>
       <div class="cal" id="cal"></div>
-      <p class="cal-key" aria-hidden="true"><span><i class="k-has"></i>Worked</span><span><i class="k-ssp"></i>Sick pay</span><span><i class="k-off"></i>Weekend or not worked</span><span><i class="k-hol"></i>Holiday</span><span><i class="k-plan"></i>Planned</span></p>
+      <p class="cal-key" aria-hidden="true"><span><i class="k-has"></i>Worked</span><span><i class="k-ssp"></i>Sick pay</span><span><i class="k-off"></i>Not worked</span><span><i class="k-hol"></i>Holiday</span><span><i class="k-plan"></i>Planned</span></p>
       <div class="cover" id="cover" hidden></div>
     </section>
 
@@ -287,7 +287,7 @@
   </form>
 </dialog>
 <script src="config.js?v=1"></script>
-<script src="calc.js?v=18"></script>
-<script type="module" src="app.js?v=33"></script>
+<script src="calc.js?v=19"></script>
+<script type="module" src="app.js?v=34"></script>
 </body>
 </html>
