@@ -397,21 +397,19 @@ dialog::backdrop{background:var(--shade)}
 .panel.collapsed .ptog svg{transform:rotate(-90deg)}
 .panel.collapsed>:not(.phead):not(.keep){display:none!important}
 .panel.collapsed .sec-head{margin-bottom:0}
-.pmove,.pdrag{display:none}
-body.arranging .pmove,body.arranging .pdrag{display:grid}
-body.arranging .ptog{display:none}
-body.arranging .panels{display:flex;columns:auto}
-body.arranging .panels>.panel{margin:0}
-body.arranging .panel>:not(.phead){display:none!important}
-body.arranging .phead>:not(h2):not(.eyebrow):not(.pctl){display:none}
-body.arranging .panel{border:1px dashed var(--hair);border-radius:16px;padding:10px 12px;background:var(--surface)}
-body.arranging .panel .sec-head{border-top:0;padding-top:0;margin:0}
-body.arranging .hero{padding:12px 14px}
-.pdrag{touch-action:none;cursor:grab}
-.panel.dragging{box-shadow:0 14px 30px -12px var(--shade);opacity:.92;position:relative;z-index:5}
-.panel.dragging .pdrag{cursor:grabbing}
-.arrange-bar{position:sticky;top:calc(8px + var(--safe-t));z-index:20;border:1px solid var(--hair);border-radius:16px;background:var(--surface);padding:12px 14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 24px -16px var(--shade)}
-.arrange-bar p{font-size:15px;color:var(--muted)}
-.arrange-open{text-align:center}
-.arrange-open .link{min-height:44px}
+.phead{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;cursor:grab}
+.phead .pctl,.phead button,.phead a{cursor:pointer}
+body.reordering .panels{display:flex;columns:auto}
+body.reordering .panels>.panel{margin:0}
+body.reordering .panel>:not(.phead){display:none!important}
+body.reordering .phead>:not(h2):not(.eyebrow):not(.pctl){display:none}
+body.reordering .pctl{visibility:hidden}
+body.reordering .panel{border:1px solid var(--hair);border-radius:16px;padding:12px 14px;background:var(--surface)}
+body.reordering .hero{background:linear-gradient(140deg,var(--hero-1),var(--hero-2) 70%)}
+body.reordering .panel .sec-head{border-top:0;padding-top:0;margin:0}
+body.reordering .panel:not(.lifted){animation:jiggle .28s ease-in-out infinite alternate}
+.panel.lifted{position:relative;z-index:30;box-shadow:0 18px 36px -14px var(--shade);scale:1.03;cursor:grabbing}
+@keyframes jiggle{from{rotate:-.4deg}to{rotate:.4deg}}
+@media (prefers-reduced-motion: reduce){body.reordering .panel:not(.lifted){animation:none}}
+.move-hint{text-align:center;margin-top:-6px}
 @media (prefers-reduced-motion: reduce){.ptog svg{transition:none}}

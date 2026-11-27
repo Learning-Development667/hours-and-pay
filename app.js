@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=36, APP_DATE='27 November 2026';
+const APP_VERSION=37, APP_DATE='27 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -353,8 +353,7 @@ const APP_VERSION=36, APP_DATE='27 November 2026';
   const GRIP='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
   PANELS.forEach(p=>{
     const t=p.dataset.title, c=document.createElement('div'); c.className='pctl';
-    c.innerHTML='<button type="button" class="pbtn pmove pup" aria-label="'+esc('Move '+t+' up')+'">'+UP+'</button><button type="button" class="pbtn pmove pdown" aria-label="'+esc('Move '+t+' down')+'">'+DOWN+'</button>'+
-      '<button type="button" class="pbtn pdrag" aria-label="'+esc('Drag '+t+' to move it, or use the arrow keys')+'">'+GRIP+'</button><button type="button" class="pbtn ptog" aria-expanded="true" aria-label="'+esc('Hide '+t)+'">'+CHEV+'</button>';
+    c.innerHTML='<button type="button" class="pbtn ptog" aria-expanded="true" aria-label="'+esc('Hide '+t)+'" aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown">'+CHEV+'</button>';
     p.querySelector('.phead').appendChild(c);
   });
   function cleanLayout(x){
@@ -368,8 +367,6 @@ const APP_VERSION=36, APP_DATE='27 November 2026';
     const now=[...box.children].filter(x=>x.classList.contains('panel')).map(x=>x.dataset.panel);
     if(now.join()!==LAYOUT.order.join())LAYOUT.order.forEach(k=>{const p=box.querySelector(':scope > [data-panel="'+k+'"]');if(p)box.appendChild(p)});
     PANELS.forEach(p=>{const c=LAYOUT.collapsed.includes(p.dataset.panel), b=p.querySelector('.ptog');p.classList.toggle('collapsed',c);b.setAttribute('aria-expanded',String(!c));b.setAttribute('aria-label',(c?'Show ':'Hide ')+p.dataset.title)});
-    const vis=LAYOUT.order.filter(k=>{const p=box.querySelector('[data-panel="'+k+'"]');return p&&!p.hidden});
-    PANELS.forEach(p=>{const i=vis.indexOf(p.dataset.panel);p.querySelector('.pup').disabled=i<=0;p.querySelector('.pdown').disabled=i<0||i>=vis.length-1});
   }
   let layoutTimer=null;
   function saveLayout(){
@@ -378,7 +375,7 @@ const APP_VERSION=36, APP_DATE='27 November 2026';
     clearTimeout(layoutTimer);
     layoutTimer=setTimeout(()=>{if(S.db&&S.user&&S.user.uid)S.db.doc('config/layout-'+S.user.uid).set({order:LAYOUT.order,collapsed:LAYOUT.collapsed,at:LAYOUT.at}).catch(()=>{})},600);
   }
-  function takeLayout(x){const c=cleanLayout(x);if(c&&c.at>LAYOUT.at&&!document.body.classList.contains('arranging')){Object.assign(LAYOUT,c);applyLayout()}}
+  function takeLayout(x){const c=cleanLayout(x);if(c&&c.at>LAYOUT.at&&!drag){Object.assign(LAYOUT,c);applyLayout()}}
   try{
     const saved=JSON.parse(localStorage.getItem('hp-layout')||'null');
     if(saved)takeLayout(saved);
@@ -393,46 +390,61 @@ const APP_VERSION=36, APP_DATE='27 November 2026';
     LAYOUT.order[a]=other; LAYOUT.order[b]=key; applyLayout(); saveLayout();
   }
   $('panels').addEventListener('click',ev=>{
-    const b=ev.target.closest('.pbtn'); if(!b)return;
-    const p=b.closest('.panel'), k=p.dataset.panel;
-    if(b.classList.contains('ptog')){const i=LAYOUT.collapsed.indexOf(k);if(i>=0)LAYOUT.collapsed.splice(i,1);else LAYOUT.collapsed.push(k);applyLayout();saveLayout()}
-    else if(b.classList.contains('pup')||b.classList.contains('pdown')){moveBy(k,b.classList.contains('pup')?-1:1);const f=b.disabled?p.querySelector('.pdrag'):b;f.focus();p.scrollIntoView({block:'nearest'})}
+    const b=ev.target.closest('.ptog'); if(!b)return;
+    const k=b.closest('.panel').dataset.panel, i=LAYOUT.collapsed.indexOf(k);
+    if(i>=0)LAYOUT.collapsed.splice(i,1);else LAYOUT.collapsed.push(k);
+    applyLayout(); saveLayout();
   });
+  /* Keyboard: Alt and the up or down arrow on a section's fold button moves the section. */
   $('panels').addEventListener('keydown',ev=>{
-    const b=ev.target.closest&&ev.target.closest('.pdrag'); if(!b||(ev.key!=='ArrowUp'&&ev.key!=='ArrowDown'))return;
-    ev.preventDefault(); moveBy(b.closest('.panel').dataset.panel,ev.key==='ArrowUp'?-1:1); b.focus();
+    const b=ev.target.closest&&ev.target.closest('.ptog'); if(!b||!ev.altKey||(ev.key!=='ArrowUp'&&ev.key!=='ArrowDown'))return;
+    ev.preventDefault(); moveBy(b.closest('.panel').dataset.panel,ev.key==='ArrowUp'?-1:1); b.focus(); toast(b.closest('.panel').dataset.title+' moved');
   });
-  /* Drag by the handle with a finger or a mouse (pointer events, so it works on the iPhone too). */
-  let drag=null;
-  $('panels').addEventListener('pointerdown',ev=>{
-    const h=ev.target.closest('.pdrag'); if(!h||!document.body.classList.contains('arranging'))return;
-    ev.preventDefault(); const p=h.closest('.panel'); drag={p:p,id:ev.pointerId}; p.classList.add('dragging'); try{h.setPointerCapture(ev.pointerId)}catch(e){}
-  });
-  $('panels').addEventListener('pointermove',ev=>{
-    if(!drag||ev.pointerId!==drag.id)return;
-    const y=ev.clientY, box=$('panels'), others=[...box.children].filter(x=>x!==drag.p&&x.classList.contains('panel')&&!x.hidden);
-    const before=others.find(x=>{const r=x.getBoundingClientRect();return y<r.top+r.height/2});
-    if(before){if(drag.p.nextElementSibling!==before)box.insertBefore(drag.p,before)}else if(box.lastElementChild!==drag.p)box.appendChild(drag.p);
+  /* Like moving apps on an iPhone: press and hold a section's heading until it lifts, then drag it.
+     While one is lifted, every section shows just its heading so the list is short; letting go opens them again. */
+  let drag=null, hold=null;
+  const HOLD_MS=420;
+  function startDrag(p,y){
+    const off=Math.max(8,Math.min(y-p.getBoundingClientRect().top,40));
+    document.body.classList.add('reordering');
+    const top=p.getBoundingClientRect().top; window.scrollBy(0,top-(y-off));
+    drag={p:p,off:off,t:0,y:y}; p.classList.add('lifted');
+    if(navigator.vibrate)try{navigator.vibrate(12)}catch(e){}
+  }
+  function moveDrag(y){
+    const p=drag.p, box=$('panels'); drag.y=y;
+    const r=p.getBoundingClientRect(), mid=y-drag.off+r.height/2;
+    const others=[...box.children].filter(x=>x!==p&&x.classList.contains('panel')&&!x.hidden);
+    const before=others.find(x=>{const q=x.getBoundingClientRect();return mid<q.top+q.height/2});
+    if(before){if(p.nextElementSibling!==before)box.insertBefore(p,before)}else if(box.lastElementChild!==p)box.appendChild(p);
+    p.style.transform=''; const nat=p.getBoundingClientRect().top;
+    drag.t=(y-drag.off)-nat; p.style.transform='translateY('+drag.t+'px)';
     const vh=window.visualViewport?window.visualViewport.height:window.innerHeight;
-    if(y<70)window.scrollBy(0,-14); else if(y>vh-70)window.scrollBy(0,14);
-  });
-  const endDrag=ev=>{
-    if(!drag||ev.pointerId!==drag.id)return;
-    drag.p.classList.remove('dragging'); drag=null;
+    if(y<80)window.scrollBy(0,-12); else if(y>vh-80)window.scrollBy(0,12);
+  }
+  function endDrag(){
+    const p=drag.p, y=drag.y, off=drag.off; drag=null;
+    p.style.transform=''; p.classList.remove('lifted'); document.body.classList.remove('reordering');
     LAYOUT.order=[...$('panels').children].filter(x=>x.classList.contains('panel')).map(x=>x.dataset.panel);
     applyLayout(); saveLayout();
-  };
-  $('panels').addEventListener('pointerup',endDrag); $('panels').addEventListener('pointercancel',endDrag);
-  function arrange(on){
-    document.body.classList.toggle('arranging',on); $('arrange-bar').hidden=!on; $('arrange-open').hidden=on;
-    applyLayout();
-    if(on){$('arrange-bar').scrollIntoView({block:'start'});const f=document.querySelector('#panels > .panel:not([hidden]) .pdrag');if(f)f.focus()}
-    else{saveLayout();$('arrange-open').focus()}
+    window.scrollBy(0,p.getBoundingClientRect().top-(y-off));
   }
-  $('arrange-open').addEventListener('click',()=>arrange(true));
-  $('s-arrange').addEventListener('click',()=>{$('dlg-settings').close();arrange(true)});
-  $('arrange-done').addEventListener('click',()=>arrange(false));
-  $('arrange-reset').addEventListener('click',()=>{LAYOUT.order=DEFAULT_ORDER.slice();applyLayout();saveLayout();toast('Sections back in their first order')});
+  $('panels').addEventListener('pointerdown',ev=>{
+    if(drag||ev.button>0)return;
+    const h=ev.target.closest('.phead'); if(!h||ev.target.closest('button,a,input,select,label'))return;
+    const p=h.closest('.panel'), x0=ev.clientX, y0=ev.clientY, id=ev.pointerId;
+    clearTimeout(hold&&hold.timer);
+    hold={id:id,x0:x0,y0:y0,y:y0,p:p,timer:setTimeout(()=>{if(!hold)return;startDrag(p,hold.y);try{h.setPointerCapture(id)}catch(e){}hold=null},HOLD_MS)};
+  });
+  document.addEventListener('pointermove',ev=>{
+    if(hold&&ev.pointerId===hold.id){hold.y=ev.clientY;if(Math.abs(ev.clientX-hold.x0)>8||Math.abs(ev.clientY-hold.y0)>8){clearTimeout(hold.timer);hold=null}}
+    else if(drag){ev.preventDefault();moveDrag(ev.clientY)}
+  });
+  const stopHold=ev=>{if(hold&&ev.pointerId===hold.id){clearTimeout(hold.timer);hold=null}else if(drag)endDrag()};
+  document.addEventListener('pointerup',stopHold); document.addEventListener('pointercancel',stopHold);
+  /* While a section is lifted the page must not scroll under the finger (iPhone). */
+  document.addEventListener('touchmove',ev=>{if(drag)ev.preventDefault()},{passive:false});
+  document.addEventListener('contextmenu',ev=>{if(drag||hold&&ev.target.closest('.phead'))ev.preventDefault()});
 
   /* ---------- a day's shifts ---------- */
   const X_ICON='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';

@@ -18,7 +18,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=28">
+<link rel="stylesheet" href="styles.css?v=29">
 </head>
 <body>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -57,12 +57,7 @@
 
   <div class="notice" id="notice" hidden></div>
 
-<div class="arrange-bar" id="arrange-bar" role="region" aria-label="Arrange sections" hidden>
-    <p>Drag a section by its handle, or use the arrows, to put the ones you use most at the top.</p>
-    <div class="actions"><button class="ghost" type="button" id="arrange-reset">Reset order</button><button class="primary" type="button" id="arrange-done">Done</button></div>
-  </div>
-
-  <div class="panels" id="panels">
+<div class="panels" id="panels">
     <section class="card panel" data-panel="cal" data-title="Hours worked" id="cal-card" aria-labelledby="h-cal">
       <div class="cal-head phead"><h2 id="h-cal">Hours worked</h2><span id="cal-sum"></span></div>
       <p class="hint cal-hint" id="cal-hint">Tap a day to add its shifts, plan them ahead or mark it as holiday.</p>
@@ -153,7 +148,7 @@
       </section>
   </div>
 
-  <p class="arrange-open"><button class="link" type="button" id="arrange-open">Arrange sections</button></p>
+  <p class="hint move-hint">To move a section, press and hold its heading, then drag it up or down.</p>
 
   <p class="foot">An estimate from the hours logged, using 2026 to 2027 income tax and National Insurance for England. It is not a payslip and not tax advice. <span id="app-version"></span></p>
 </div>
@@ -265,7 +260,7 @@
     <h3>This sign-in</h3>
     <p id="s-user"></p>
     <p id="s-version"></p>
-    <div class="actions"><button class="ghost" type="button" id="s-arrange">Arrange sections</button><button class="ghost" type="button" id="btn-signout">Sign out</button></div>
+    <div class="actions"><button class="ghost" type="button" id="btn-signout">Sign out</button></div>
   </form>
 </dialog>
 
@@ -282,6 +277,6 @@
 </dialog>
 <script src="config.js?v=1"></script>
 <script src="calc.js?v=20"></script>
-<script type="module" src="app.js?v=36"></script>
+<script type="module" src="app.js?v=37"></script>
 </body>
 </html>
