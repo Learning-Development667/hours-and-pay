@@ -18,7 +18,7 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap">
-<link rel="stylesheet" href="styles.css?v=26">
+<link rel="stylesheet" href="styles.css?v=27">
 </head>
 <body>
 <div id="toast" role="status" aria-live="polite" hidden></div>
@@ -200,7 +200,7 @@
     <div class="field"><label for="l-months">Paid back over (months)</label><input id="l-months" type="text" inputmode="numeric" autocomplete="off" maxlength="2"><span class="err" hidden></span></div>
     <div class="field"><label for="l-first">First repayment</label><select id="l-first"></select><span class="err" hidden></span></div>
     <h3 class="loan-sub">Paying back each month</h3>
-    <p>Leave a month blank to pay its share. Put in more if you can afford it: the rest is spread over the months left.</p>
+    <p>Leave a month blank to pay its share. Put in more if you can afford it: the rest is spread over the months left. Put 0 for a month you cannot pay: an extra month is added at the end.</p>
     <div id="l-paid"></div>
     <div class="actions"><button class="primary" type="submit" id="loan-save">Save</button><button class="ghost" type="button" id="loan-remove">Remove borrowed money</button></div>
   </form>
@@ -287,7 +287,7 @@
   </form>
 </dialog>
 <script src="config.js?v=1"></script>
-<script src="calc.js?v=19"></script>
-<script type="module" src="app.js?v=34"></script>
+<script src="calc.js?v=20"></script>
+<script type="module" src="app.js?v=35"></script>
 </body>
 </html>

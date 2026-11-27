@@ -381,3 +381,4 @@ dialog::backdrop{background:var(--shade)}
 .cal-total{grid-column:span 5;display:flex;align-items:center;justify-content:flex-end;padding-right:10px;min-height:56px;font-weight:600;font-size:15px}
 .cal-sumcell.tot{min-height:56px;background:var(--gold-soft)}
 @media (max-width:380px){.cs-h{display:none}.cs-m{font-size:15px}.cal-sumcell.est .cs-m{font-size:13px}}
+.pill.skip{color:var(--muted);border:1px solid var(--line)}
