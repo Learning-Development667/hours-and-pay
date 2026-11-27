@@ -19,7 +19,7 @@ function makeDb(fs){
 }
 
 /* Bump APP_VERSION and version.json together on every change to the app. */
-const APP_VERSION=35, APP_DATE='27 November 2026';
+const APP_VERSION=36, APP_DATE='27 November 2026';
 
 (function(){
   const $=id=>document.getElementById(id);
@@ -342,8 +342,97 @@ const APP_VERSION=35, APP_DATE='27 November 2026';
   $('btn-next').addEventListener('click',()=>{const L=S.ledger,i=L.cycles.findIndex(c=>c.start===S.view);if(i<L.cycles.length-1){S.view=L.cycles[i+1].start;render()}});
 
   /* Hours logged folds away; each phone remembers whether it was open. */
-  try{if(localStorage.getItem('hp-fold-entries')==='1')$('fold-entries').open=true}catch(e){}
-  $('fold-entries').addEventListener('toggle',()=>{try{localStorage.setItem('hp-fold-entries',$('fold-entries').open?'1':'0')}catch(e){}});
+  /* ---------- sections: fold away and arrange (Mark, 27 November 2026) ----------
+     Each person has their own order and folds: kept on the phone and in config/layout-{uid}, so they follow
+     the sign-in to the iPhone, the Duo and the Mac. Arranging is its own mode, so a scroll never moves a section. */
+  const PANELS=[...document.querySelectorAll('#panels > .panel')], DEFAULT_ORDER=PANELS.map(p=>p.dataset.panel);
+  const LAYOUT={order:DEFAULT_ORDER.slice(),collapsed:['entries'],at:0};
+  const CHEV='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+  const UP='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>';
+  const DOWN='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>';
+  const GRIP='<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>';
+  PANELS.forEach(p=>{
+    const t=p.dataset.title, c=document.createElement('div'); c.className='pctl';
+    c.innerHTML='<button type="button" class="pbtn pmove pup" aria-label="'+esc('Move '+t+' up')+'">'+UP+'</button><button type="button" class="pbtn pmove pdown" aria-label="'+esc('Move '+t+' down')+'">'+DOWN+'</button>'+
+      '<button type="button" class="pbtn pdrag" aria-label="'+esc('Drag '+t+' to move it, or use the arrow keys')+'">'+GRIP+'</button><button type="button" class="pbtn ptog" aria-expanded="true" aria-label="'+esc('Hide '+t)+'">'+CHEV+'</button>';
+    p.querySelector('.phead').appendChild(c);
+  });
+  function cleanLayout(x){
+    if(!x||!Array.isArray(x.order))return null;
+    const order=x.order.filter(k=>DEFAULT_ORDER.includes(k)).filter((k,i,a)=>a.indexOf(k)===i);
+    DEFAULT_ORDER.forEach(k=>{if(!order.includes(k))order.push(k)});
+    return {order:order,collapsed:Array.isArray(x.collapsed)?x.collapsed.filter(k=>DEFAULT_ORDER.includes(k)):[],at:Number(x.at)||0};
+  }
+  function applyLayout(){
+    const box=$('panels');
+    const now=[...box.children].filter(x=>x.classList.contains('panel')).map(x=>x.dataset.panel);
+    if(now.join()!==LAYOUT.order.join())LAYOUT.order.forEach(k=>{const p=box.querySelector(':scope > [data-panel="'+k+'"]');if(p)box.appendChild(p)});
+    PANELS.forEach(p=>{const c=LAYOUT.collapsed.includes(p.dataset.panel), b=p.querySelector('.ptog');p.classList.toggle('collapsed',c);b.setAttribute('aria-expanded',String(!c));b.setAttribute('aria-label',(c?'Show ':'Hide ')+p.dataset.title)});
+    const vis=LAYOUT.order.filter(k=>{const p=box.querySelector('[data-panel="'+k+'"]');return p&&!p.hidden});
+    PANELS.forEach(p=>{const i=vis.indexOf(p.dataset.panel);p.querySelector('.pup').disabled=i<=0;p.querySelector('.pdown').disabled=i<0||i>=vis.length-1});
+  }
+  let layoutTimer=null;
+  function saveLayout(){
+    LAYOUT.at=Date.now();
+    try{localStorage.setItem('hp-layout',JSON.stringify(LAYOUT))}catch(e){}
+    clearTimeout(layoutTimer);
+    layoutTimer=setTimeout(()=>{if(S.db&&S.user&&S.user.uid)S.db.doc('config/layout-'+S.user.uid).set({order:LAYOUT.order,collapsed:LAYOUT.collapsed,at:LAYOUT.at}).catch(()=>{})},600);
+  }
+  function takeLayout(x){const c=cleanLayout(x);if(c&&c.at>LAYOUT.at&&!document.body.classList.contains('arranging')){Object.assign(LAYOUT,c);applyLayout()}}
+  try{
+    const saved=JSON.parse(localStorage.getItem('hp-layout')||'null');
+    if(saved)takeLayout(saved);
+    else if(localStorage.getItem('hp-fold-entries')==='1'){LAYOUT.collapsed=[];}
+  }catch(e){}
+  applyLayout();
+  S.watchLayout=db=>{if(S.user&&S.user.uid)return db.doc('config/layout-'+S.user.uid).onSnapshot(snap=>{if(snap.exists)takeLayout(snap.data())},()=>{})};
+  function moveBy(key,step){
+    const vis=LAYOUT.order.filter(k=>{const p=document.querySelector('#panels > [data-panel="'+k+'"]');return p&&!p.hidden});
+    const i=vis.indexOf(key), j=i+step; if(i<0||j<0||j>=vis.length)return;
+    const other=vis[j], a=LAYOUT.order.indexOf(key), b=LAYOUT.order.indexOf(other);
+    LAYOUT.order[a]=other; LAYOUT.order[b]=key; applyLayout(); saveLayout();
+  }
+  $('panels').addEventListener('click',ev=>{
+    const b=ev.target.closest('.pbtn'); if(!b)return;
+    const p=b.closest('.panel'), k=p.dataset.panel;
+    if(b.classList.contains('ptog')){const i=LAYOUT.collapsed.indexOf(k);if(i>=0)LAYOUT.collapsed.splice(i,1);else LAYOUT.collapsed.push(k);applyLayout();saveLayout()}
+    else if(b.classList.contains('pup')||b.classList.contains('pdown')){moveBy(k,b.classList.contains('pup')?-1:1);const f=b.disabled?p.querySelector('.pdrag'):b;f.focus();p.scrollIntoView({block:'nearest'})}
+  });
+  $('panels').addEventListener('keydown',ev=>{
+    const b=ev.target.closest&&ev.target.closest('.pdrag'); if(!b||(ev.key!=='ArrowUp'&&ev.key!=='ArrowDown'))return;
+    ev.preventDefault(); moveBy(b.closest('.panel').dataset.panel,ev.key==='ArrowUp'?-1:1); b.focus();
+  });
+  /* Drag by the handle with a finger or a mouse (pointer events, so it works on the iPhone too). */
+  let drag=null;
+  $('panels').addEventListener('pointerdown',ev=>{
+    const h=ev.target.closest('.pdrag'); if(!h||!document.body.classList.contains('arranging'))return;
+    ev.preventDefault(); const p=h.closest('.panel'); drag={p:p,id:ev.pointerId}; p.classList.add('dragging'); try{h.setPointerCapture(ev.pointerId)}catch(e){}
+  });
+  $('panels').addEventListener('pointermove',ev=>{
+    if(!drag||ev.pointerId!==drag.id)return;
+    const y=ev.clientY, box=$('panels'), others=[...box.children].filter(x=>x!==drag.p&&x.classList.contains('panel')&&!x.hidden);
+    const before=others.find(x=>{const r=x.getBoundingClientRect();return y<r.top+r.height/2});
+    if(before){if(drag.p.nextElementSibling!==before)box.insertBefore(drag.p,before)}else if(box.lastElementChild!==drag.p)box.appendChild(drag.p);
+    const vh=window.visualViewport?window.visualViewport.height:window.innerHeight;
+    if(y<70)window.scrollBy(0,-14); else if(y>vh-70)window.scrollBy(0,14);
+  });
+  const endDrag=ev=>{
+    if(!drag||ev.pointerId!==drag.id)return;
+    drag.p.classList.remove('dragging'); drag=null;
+    LAYOUT.order=[...$('panels').children].filter(x=>x.classList.contains('panel')).map(x=>x.dataset.panel);
+    applyLayout(); saveLayout();
+  };
+  $('panels').addEventListener('pointerup',endDrag); $('panels').addEventListener('pointercancel',endDrag);
+  function arrange(on){
+    document.body.classList.toggle('arranging',on); $('arrange-bar').hidden=!on; $('arrange-open').hidden=on;
+    applyLayout();
+    if(on){$('arrange-bar').scrollIntoView({block:'start'});const f=document.querySelector('#panels > .panel:not([hidden]) .pdrag');if(f)f.focus()}
+    else{saveLayout();$('arrange-open').focus()}
+  }
+  $('arrange-open').addEventListener('click',()=>arrange(true));
+  $('s-arrange').addEventListener('click',()=>{$('dlg-settings').close();arrange(true)});
+  $('arrange-done').addEventListener('click',()=>arrange(false));
+  $('arrange-reset').addEventListener('click',()=>{LAYOUT.order=DEFAULT_ORDER.slice();applyLayout();saveLayout();toast('Sections back in their first order')});
 
   /* ---------- a day's shifts ---------- */
   const X_ICON='<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
@@ -716,6 +805,7 @@ const APP_VERSION=35, APP_DATE='27 November 2026';
   }
   function startData(){
     const db=S.db=makeDb(store);
+    if(S.watchLayout){const u=S.watchLayout(db);if(u)unsubs.push(u)}
     S.status='loading';
     slow=setTimeout(()=>{if(S.status==='loading'){S.status='slow';render()}},10000);
     const settle=()=>{if(S.got.hours&&S.got.cfg){clearTimeout(slow);S.status='ready'}render()};

@@ -382,3 +382,36 @@ dialog::backdrop{background:var(--shade)}
 .cal-sumcell.tot{min-height:56px;background:var(--gold-soft)}
 @media (max-width:380px){.cs-h{display:none}.cs-m{font-size:15px}.cal-sumcell.est .cs-m{font-size:13px}}
 .pill.skip{color:var(--muted);border:1px solid var(--line)}
+/* 27 November 2026: every section folds away, and the order is each person's own (arranging is its own mode) */
+.panels{display:flex;flex-direction:column;gap:28px}
+@media (min-width:1000px){.panels{display:block;columns:2;column-gap:36px}.panels>.panel{break-inside:avoid;margin:0 0 32px}.panels>.panel:last-child{margin-bottom:0}}
+.phead{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px}
+.phead h2{flex:1 1 auto;min-width:0}
+.hero-head .eyebrow{flex:1 1 auto;min-width:0}
+.pctl{display:inline-flex;gap:6px;margin-left:auto;align-items:center;flex:none}
+.pbtn{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:transparent;color:var(--gold);display:grid;place-items:center;padding:0}
+.pbtn:hover{border-color:var(--hair)}
+.pbtn[disabled]{opacity:.35;cursor:default}
+.hero .pbtn{color:var(--hero-gold);border-color:var(--hero-hair)}
+.ptog svg{transition:transform .2s}
+.panel.collapsed .ptog svg{transform:rotate(-90deg)}
+.panel.collapsed>:not(.phead):not(.keep){display:none!important}
+.panel.collapsed .sec-head{margin-bottom:0}
+.pmove,.pdrag{display:none}
+body.arranging .pmove,body.arranging .pdrag{display:grid}
+body.arranging .ptog{display:none}
+body.arranging .panels{display:flex;columns:auto}
+body.arranging .panels>.panel{margin:0}
+body.arranging .panel>:not(.phead){display:none!important}
+body.arranging .phead>:not(h2):not(.eyebrow):not(.pctl){display:none}
+body.arranging .panel{border:1px dashed var(--hair);border-radius:16px;padding:10px 12px;background:var(--surface)}
+body.arranging .panel .sec-head{border-top:0;padding-top:0;margin:0}
+body.arranging .hero{padding:12px 14px}
+.pdrag{touch-action:none;cursor:grab}
+.panel.dragging{box-shadow:0 14px 30px -12px var(--shade);opacity:.92;position:relative;z-index:5}
+.panel.dragging .pdrag{cursor:grabbing}
+.arrange-bar{position:sticky;top:calc(8px + var(--safe-t));z-index:20;border:1px solid var(--hair);border-radius:16px;background:var(--surface);padding:12px 14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 10px 24px -16px var(--shade)}
+.arrange-bar p{font-size:15px;color:var(--muted)}
+.arrange-open{text-align:center}
+.arrange-open .link{min-height:44px}
+@media (prefers-reduced-motion: reduce){.ptog svg{transition:none}}

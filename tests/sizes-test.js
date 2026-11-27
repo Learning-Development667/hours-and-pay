@@ -14,7 +14,7 @@ const SIZES=[['small-320',320,700,'light'],['iphone-390',390,844,'dark'],['pro-m
     await p.fill('#si-email','a@b.c');await p.fill('#si-pass','right');await p.click('#si-go');await p.clock.runFor(300);
     await p.waitForSelector('#dlg-setup[open]');await p.fill('#su-code',code);await p.click('#su-go');await p.clock.runFor(500);
     await p.click('#loan-edit');await p.fill('#l-amount','1000');await p.fill('#l-months','3');await p.click('#loan-save');await p.clock.runFor(300);
-    await p.click('#fold-entries summary');
+    await p.click('[data-panel="entries"] .ptog');
     const over=await p.evaluate(()=>({sw:document.documentElement.scrollWidth,cw:document.documentElement.clientWidth,small:[...document.querySelectorAll('button,input,select,summary')].filter(e=>e.offsetParent&&e.getBoundingClientRect().height<44&&!e.closest('.wheel')).map(e=>e.id||e.textContent.trim().slice(0,20)),col:Math.round(document.querySelector('.wrap').getBoundingClientRect().width-parseFloat(getComputedStyle(document.querySelector('.wrap')).paddingLeft)-parseFloat(getComputedStyle(document.querySelector('.wrap')).paddingRight)),wide:[...document.querySelectorAll('section,.card,.hero,table')].filter(e=>e.offsetParent&&e.getBoundingClientRect().right>document.documentElement.clientWidth+1).map(e=>e.id||e.className)}));
     await p.screenshot({path:'/tmp/size-'+name+'.png',fullPage:true});
     await p.click('.cal-day[data-day="2026-11-19"]');await p.waitForSelector('#dlg-day[open]');
