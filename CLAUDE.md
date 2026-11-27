@@ -47,4 +47,4 @@ A private ledger for Mark and Shelley: hours Mark works at MA Group, with live e
 - **First sign-in:** an empty database opens the Set up sheet, which takes a set-up code (base64 JSON of the settings and any hours) given to Mark privately, or Settings can be filled in by hand.
 
 ## Open
-- Nothing has been tried on an iPhone yet.
+- Tried on Mark's iPhone (27 November 2026): press and hold to move sections works. Typed times, the time wheel and the Duo's folded and unfolded screens are still to be confirmed there.
